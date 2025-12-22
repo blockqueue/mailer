@@ -1,19 +1,23 @@
-version: '3.8'
-
 services:
-  mailer:
+  bq-mailer-dev:
     build:
-      context: ../..
-      dockerfile: apps/mailer/Dockerfile
+      context: .
+      dockerfile: ./docker/mailer/Dockerfile
     ports:
-      - "3000:3000"
+      - '3000:3000'
     volumes:
-      - ./config:/config
-      - ./templates:/templates
-    environment:
-      # Add your environment variables here
-      # Example:
-      # API_KEY: your-api-key-here
-      # SMTP_PASSWORD: your-smtp-password-here
-    restart: unless-stopped
+      - ./node_modules:/app/node_modules
+      - ./apps/mailer:/app/apps/mailer
+      - ./packages/data:/app/packages/data
+    env_file:
+      - apps/mailer/.env
 
+  bq-mailer-test:
+    image: blockqueue/mailer:latest
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./packages/data/config:/config
+      - ./packages/data/templates:/templates
+    env_file:
+      - apps/mailer/.env.test

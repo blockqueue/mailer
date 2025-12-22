@@ -105,7 +105,6 @@ export async function sendEmail(
 
   // Set HTML body
   sendMailOptions.html = html;
-  console.log('==sendMailOptions==', sendMailOptions);
 
   // Send the email
   try {
@@ -113,7 +112,6 @@ export async function sendEmail(
     const info = await transport.sendMail(
       sendMailOptions as Parameters<Transporter['sendMail']>[0],
     );
-    console.log('==info==', info);
 
     const messageId = (info as { messageId?: string }).messageId ?? '';
     return {

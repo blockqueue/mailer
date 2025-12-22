@@ -1,0 +1,53 @@
+# Base stage
+FROM oven/bun:1-slim AS base
+
+# Install Node.js 20+ (required by package.json) and npm
+# bun:1-slim comes with Node.js 18, but we need Node.js 20+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+
+# Prune stage - Use Turborepo to get only what we need
+FROM base AS prune
+
+WORKDIR /app
+COPY . .
+RUN npm i --global turbo@2.7.0
+RUN turbo prune mailer --docker
+
+
+# Install dependencies stage
+FROM base AS installer
+
+WORKDIR /app
+
+## Copy pruned package files
+COPY --from=prune /app/out/full/ .
+COPY --from=prune /app/out/json/package-lock.json .
+
+RUN npm install --legacy-peer-deps
+RUN npm run build -- --filter=mailer
+
+
+# Runner stage - Final lightweight image
+FROM oven/bun:1-slim AS runner
+
+WORKDIR /app
+
+## Create non-root user for security
+RUN groupadd --system --gid 1001 bunuser && \
+    useradd --system --uid 1001 --gid bunuser bunuser && \
+    chown -R bunuser:bunuser /app
+
+COPY --from=installer --chown=bunuser:bunuser /app/apps/mailer/dist ./apps/mailer/dist
+RUN cd /app/apps/mailer && bun install react-dom mjml
+
+## Switch to non-root user
+USER bunuser
+
+## Run the bundled application
+CMD ["bun", "run", "apps/mailer/dist/index.js"]
