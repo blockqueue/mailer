@@ -41,7 +41,6 @@ This is infrastructure software, not a standalone product. We focus on making it
 - [Email Validation](#email-validation)
 - [Error Handling](#error-handling)
 - [Development](#development)
-- [License](#license)
 
 ## Quick Start
 
