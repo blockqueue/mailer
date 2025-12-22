@@ -1,0 +1,28 @@
+auth:
+  type: apiKey
+  header: x-mailer-api-key
+  value: ${MAILER_API_KEY}
+
+accounts:
+  primary:
+    type: smtp
+    from: ${MAIL_FROM_EMAIL}
+    host: smtp.zeptomail.com
+    port: 587
+    secure: false
+    auth:
+      user: ${SMTP_USER}
+      pass: ${SMTP_PASSWORD}
+  ses:
+    type: smtp
+    from: ${MAIL_FROM_EMAIL}
+    host: smtp.zeptomail.com
+    port: 587
+    secure: false
+    auth:
+      user: ${SMTP_USER}
+      pass: ${SMTP_PASSWORD}
+
+defaults:
+  account: primary
+  renderer: react-email

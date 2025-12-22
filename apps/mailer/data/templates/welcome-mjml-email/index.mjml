@@ -1,0 +1,10 @@
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>Hello {{userName}}!</mj-text>
+        <mj-text>Welcome to {{appName}}!</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

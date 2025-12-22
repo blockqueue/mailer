@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  mailer:
+    build:
+      context: ../..
+      dockerfile: apps/mailer/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config:/config
+      - ./templates:/templates
+    environment:
+      # Add your environment variables here
+      # Example:
+      # API_KEY: your-api-key-here
+      # SMTP_PASSWORD: your-smtp-password-here
+    restart: unless-stopped
+

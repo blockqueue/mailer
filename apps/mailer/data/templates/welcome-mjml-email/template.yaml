@@ -1,0 +1,12 @@
+id: welcome-mjml-email
+renderer: mjml
+schema:
+  type: object
+  required:
+    - userName
+    - appName
+  properties:
+    userName:
+      type: string
+    appName:
+      type: string
