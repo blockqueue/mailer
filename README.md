@@ -579,16 +579,3 @@ docker run -p 3000:3000 \
 ```
 
 **Note**: When mounting volumes to the default paths (`/config` and `/templates`) as shown above, you don't need to set the `CONFIG_PATH` or `TEMPLATES_DIR` environment variables. Only set these if you mount your volumes to different paths and need to override the defaults.
-
-## License
-
-This project is open source and available under the MIT License (or Apache 2.0). See the [LICENSE](LICENSE) file for details.
-
-**Why MIT/Apache 2.0?**
-
-- Maximum adoption and community building
-- Easy for companies to use and integrate
-- Aligns with our goal of sharing infrastructure with the community
-- No restrictions on commercial use or modifications
-
-We believe in open source as a way to build better software together. If you find this project useful, contributions, feedback, and stars are always appreciated!
