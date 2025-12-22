@@ -6,7 +6,11 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "check-types": "turbo run check-types",
+    "remove:apps": "(cd apps/web && rm -rf node_modules .next .turbo) && (cd apps/docs && rm -rf node_modules .next .turbo) && (cd apps/mailer && rm -rf node_modules .turbo dist)",
+    "remove:packages": "(cd packages/eslint-config && rm -rf node_modules) && (cd packages/ui && rm -rf node_modules .turbo)",
+    "reinstall": "npm run remove:packages && npm run remove:apps && rm -rf node_modules && npm i",
+    "build:packages": "(cd packages/core && npm run build)"
   },
   "devDependencies": {
     "prettier": "^3.7.4",

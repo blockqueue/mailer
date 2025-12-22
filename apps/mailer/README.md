@@ -52,7 +52,7 @@ defaults:
 
 2. Create a `templates` directory with your templates (see [Templates](#templates) section)
 
-3. Set environment variables:
+3. Set environment variables (note: variable names should match what you use in your `config.yaml`):
 
 ```bash
 export MAILER_API_KEY=your-api-key
@@ -60,6 +60,8 @@ export MAIL_FROM_EMAIL=noreply@example.com
 export SMTP_USER=your-email@example.com
 export SMTP_PASSWORD=your-password
 ```
+
+**Note**: All environment variables are optional. You only need to set the variables that you reference in your `config.yaml` file. Variable names are user-defined - use whatever names you prefer in your config.
 
 4. Run with Docker Compose:
 
@@ -77,7 +79,7 @@ bun install
 
 2. Create `/data/config/config.yaml` and `/data/templates/` directory structure
 
-3. Set environment variables (see above)
+3. Set environment variables (optional - only set the variables you reference in your `config.yaml` file)
 
 4. Run the server:
 
@@ -104,7 +106,7 @@ auth:
 accounts:
   primary:
     type: smtp
-    from: ${MAIL_FROM_EMAIL}  # Fallback 'from' address for this account
+    from: ${MAIL_FROM_EMAIL} # Fallback 'from' address for this account
     host: smtp.gmail.com
     port: 587
     secure: false
@@ -137,6 +139,13 @@ auth:
   value: ${MAILER_API_KEY:-default-key}  # Optional, uses default if not set
 ```
 
+**Important Notes:**
+
+- **All environment variables are optional** - You only need to set the variables that you reference in your `config.yaml`
+- **Variable names are user-defined** - You can use any variable names you want in your config (e.g., `${MY_API_KEY}`, `${EMAIL_USER}`, etc.)
+- **Only two environment variables have fixed names**: `CONFIG_PATH` and `TEMPLATES_DIR` (see [Environment Variables](#environment-variables) section)
+- All other environment variable names are determined by what you write in your `config.yaml` file
+
 ### Account Types
 
 #### SMTP
@@ -145,10 +154,10 @@ auth:
 accounts:
   smtp-account:
     type: smtp
-    from: noreply@example.com  # Optional: fallback 'from' address
+    from: noreply@example.com # Optional: fallback 'from' address
     host: smtp.example.com
     port: 587
-    secure: false  # true for 465, false for other ports
+    secure: false # true for 465, false for other ports
     auth:
       user: ${SMTP_USER}
       pass: ${SMTP_PASSWORD}
@@ -196,7 +205,7 @@ Templates are organized in directories under `/templates/`. Each template direct
 ```yaml
 id: welcome
 renderer: react-email
-defaultAccount: primary  # Optional: default account for this template
+defaultAccount: primary # Optional: default account for this template
 schema:
   type: object
   required:
@@ -210,6 +219,7 @@ schema:
 ```
 
 **Template Config Fields:**
+
 - `id` (required): Unique template identifier (must match directory name)
 - `renderer` (optional): Template renderer type (`react-email`, `mjml`, or `html`). Falls back to global default.
 - `defaultAccount` (optional): Default account to use for this template. Falls back to global default.
@@ -307,6 +317,7 @@ x-mailer-api-key: <your-api-key>
 ```
 
 **Request Fields:**
+
 - `templateId` (required): The template ID to use
 - `account` (optional): Account to use. Falls back to `template.defaultAccount` or `config.defaults.account`
 - `payload` (required): Data to pass to the template (must match template schema)
@@ -340,6 +351,7 @@ The system resolves configuration values in the following priority order:
 - **Email Options**: `request.sendMailOptions` > `account.from` (for `from` field only)
 
 **Email Options Merge:**
+
 1. `account.from` is used as fallback for the `from` field if not provided in `request.sendMailOptions`
 2. All other fields (`to`, `subject`, `cc`, `bcc`, `replyTo`, etc.) must be provided in `request.sendMailOptions` if needed
 
@@ -379,7 +391,7 @@ All email addresses are automatically validated before sending:
 ```json
 {
   "error": "Error message",
-  "details": ["Additional error details"]  // Optional, for validation errors
+  "details": ["Additional error details"] // Optional, for validation errors
 }
 ```
 
@@ -403,6 +415,7 @@ All email addresses are automatically validated before sending:
 ### Common Error Scenarios
 
 **Missing required field:**
+
 ```json
 {
   "error": "Missing required field: templateId"
@@ -410,6 +423,7 @@ All email addresses are automatically validated before sending:
 ```
 
 **Template not found:**
+
 ```json
 {
   "error": "Template not found: welcome"
@@ -417,17 +431,16 @@ All email addresses are automatically validated before sending:
 ```
 
 **Payload validation failed:**
+
 ```json
 {
   "error": "Payload validation failed",
-  "details": [
-    "userName: Required",
-    "appName: Required"
-  ]
+  "details": ["userName: Required", "appName: Required"]
 }
 ```
 
 **Email validation failed:**
+
 ```json
 {
   "error": "Email validation failed: Invalid 'to' addresses: invalid-email"
@@ -435,6 +448,7 @@ All email addresses are automatically validated before sending:
 ```
 
 **Missing required email field:**
+
 ```json
 {
   "error": "Missing required field: 'from' in sendMailOptions. Provide it in request.sendMailOptions or account.from (for 'from' field only)"
@@ -493,15 +507,22 @@ apps/mailer/
 
 ### Environment Variables
 
-Common environment variables:
+**All environment variables are optional**, and you can name them whatever you want based on your `config.yaml` file. The only exceptions are:
 
-- `MAILER_API_KEY` - API key for authentication
-- `MAIL_FROM_EMAIL` - Default sender email address
-- `SMTP_USER` - SMTP username
-- `SMTP_PASSWORD` - SMTP password
-- `PORT` - Server port (default: 3000)
 - `CONFIG_PATH` - Path to config file (default: `/config/config.yaml`)
 - `TEMPLATES_DIR` - Path to templates directory (default: `/templates`)
+
+**Note**: Most users using Docker will never need to set `CONFIG_PATH` or `TEMPLATES_DIR` because they can simply mount their config and template directories to the default paths (`/config` and `/templates`) in the Docker container. These environment variables are primarily useful for local development or custom Docker setups where you mount volumes to different paths.
+
+**All other environment variables** are user-defined based on what you reference in your `config.yaml` using the `${VAR_NAME}` syntax. For example, if your config uses `${MY_CUSTOM_API_KEY}`, then you would set the `MY_CUSTOM_API_KEY` environment variable.
+
+**Common examples** (these names are just examples - use whatever names you prefer):
+
+- `${MAILER_API_KEY}` - API key for authentication (or `${API_KEY}`, `${AUTH_TOKEN}`, etc.)
+- `${MAIL_FROM_EMAIL}` - Default sender email address (or `${FROM_EMAIL}`, `${SENDER}`, etc.)
+- `${SMTP_USER}` - SMTP username (or `${EMAIL_USER}`, `${USERNAME}`, etc.)
+- `${SMTP_PASSWORD}` - SMTP password (or `${EMAIL_PASS}`, `${PASSWORD}`, etc.)
+- `PORT` - Server port (default: 3000) - Note: This is a special case used by the server, not referenced in config.yaml
 
 ### Running Tests
 
@@ -536,6 +557,4 @@ docker run -p 3000:3000 \
   mailer
 ```
 
-## License
-
-MIT
+**Note**: When mounting volumes to the default paths (`/config` and `/templates`) as shown above, you don't need to set the `CONFIG_PATH` or `TEMPLATES_DIR` environment variables. Only set these if you mount your volumes to different paths and need to override the defaults.
