@@ -1,4 +1,13 @@
-import { Body, Container, Head, Html, Text } from '@react-email/components';
+import {
+  Body,
+  Container,
+  Head,
+  Html,
+  Section,
+  Text,
+} from '@react-email/components';
+import { SocialLinks } from '../_components/SocialLinks';
+import { TailwindWrapper } from '../_components/TailwindWrapper';
 
 interface WelcomeEmailProps {
   userName: string;
@@ -9,12 +18,24 @@ export default function WelcomeEmail(props: WelcomeEmailProps) {
   return (
     <Html>
       <Head />
-      <Body>
-        <Container>
-          <Text>Hello {userName}!</Text>
-          <Text>Welcome to {appName}!</Text>
-        </Container>
-      </Body>
+
+      <TailwindWrapper>
+        <Body>
+          <Container>
+            <Text>Hello {userName}!</Text>
+            <Text>Welcome to {appName}!</Text>
+
+            <Section className="mt-12 border-t border-gray-200 pt-8">
+              <SocialLinks
+                instagram="https://www.instagram.com/blockqueue/"
+                linkedin="https://www.linkedin.com/company/blockqueue/"
+                facebook="https://www.facebook.com/blockqueue/"
+                twitter="https://x.com/blockqueue"
+              />
+            </Section>
+          </Container>
+        </Body>
+      </TailwindWrapper>
     </Html>
   );
 }

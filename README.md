@@ -220,6 +220,8 @@ Templates are organized in directories under `/templates/`. Each template direct
 1. `template.yaml` - Template metadata and schema
 2. Template file - `index.tsx` (React Email), `index.mjml` (MJML), or `index.html` (HTML)
 
+**Note**: Folders starting with underscore (e.g., `_components`, `_utils`) are ignored by the template loader. This is useful for component-based renderers like React Email that may need shared components or utilities. These folders won't be treated as templates.
+
 ### Template Config (`template.yaml`)
 
 ```yaml

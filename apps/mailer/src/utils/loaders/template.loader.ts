@@ -24,7 +24,7 @@ export class TemplateLoader {
 
     const templateDirs = fs
       .readdirSync(TEMPLATES_DIR, { withFileTypes: true })
-      .filter((dirent) => dirent.isDirectory())
+      .filter((dirent) => dirent.isDirectory() && !dirent.name.startsWith('_'))
       .map((dirent) => dirent.name);
 
     for (const templateId of templateDirs) {
