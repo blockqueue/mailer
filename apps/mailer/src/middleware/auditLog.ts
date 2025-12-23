@@ -141,14 +141,19 @@ export function auditLogMiddleware() {
       );
     }
 
-    if (responseTime > 1000) {
-      // Log slow requests (>1 second)
+    // Slow request threshold varies by endpoint
+    // Email sending typically takes 1-5 seconds for external SMTP services
+    // Health checks and other endpoints should be much faster
+    const slowRequestThreshold = path === '/send' ? 10000 : 1000; // 10s for /send, 1s for others
+
+    if (responseTime > slowRequestThreshold) {
       logger.warn(
         {
           ip,
           method,
           path,
           responseTime,
+          threshold: slowRequestThreshold,
         },
         'Slow request detected',
       );

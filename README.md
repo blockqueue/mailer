@@ -372,7 +372,7 @@ x-mailer-signature: t=<timestamp>,v1=<signature>
 
 The signature header format is `t=<timestamp>,v1=<signature>` where:
 
-- `timestamp` is the current Unix timestamp in milliseconds (e.g., `Date.now()`)
+- `timestamp` is the current Unix timestamp in **seconds** (e.g., `Math.floor(Date.now() / 1000)`)
 - `signature` is the HMAC-SHA512 hash of `timestamp + "." + requestBody` using your signing secret
 
 **Client Implementation Example (Node.js):**
@@ -381,16 +381,21 @@ The signature header format is `t=<timestamp>,v1=<signature>` where:
 const crypto = require('crypto');
 
 function generateSignature(secret, body) {
-  const timestamp = Date.now();
-  const payload = `${timestamp}.${JSON.stringify(body)}`;
+  const timestamp = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
+  const bodyString = JSON.stringify(body); // Raw request body as string
+
+  // Signature is: HMAC-SHA512(timestamp + "." + bodyString, secret)
   const signature = crypto
     .createHmac('sha512', secret)
-    .update(payload)
+    .update(`${timestamp}.`)
+    .update(bodyString)
     .digest('hex');
+
   return `t=${timestamp},v1=${signature}`;
 }
 
 const body = { templateId: 'welcome', payload: {...} };
+const bodyString = JSON.stringify(body);
 const signature = generateSignature(process.env.MAILER_SIGNING_SECRET, body);
 
 fetch('https://mailer.example.com/send', {
@@ -402,6 +407,74 @@ fetch('https://mailer.example.com/send', {
   body: JSON.stringify(body),
 });
 ```
+
+**Postman Pre-Request Script:**
+
+For testing with Postman, add this script to the "Pre-request Script" tab:
+
+```javascript
+const secret = pm.environment.get('MAILER_SIGNING_SECRET');
+if (!secret) {
+  throw new Error('MAILER_SIGNING_SECRET is required.');
+}
+
+// Get the request body as a string
+const bodyString = pm.request.body.raw;
+if (!bodyString) {
+  console.error('Error: Request body is empty');
+  throw new Error('Request body is required for HMAC signing');
+}
+
+// Generate Unix timestamp in seconds
+const timestamp = Math.floor(Date.now() / 1000);
+const message = `${timestamp}.${bodyString}`;
+
+// Convert secret and message to ArrayBuffer
+const encoder = new TextEncoder();
+const keyData = encoder.encode(secret);
+const messageData = encoder.encode(message);
+
+// Import key and sign (async operation)
+crypto.subtle
+  .importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: { name: 'SHA-512' } },
+    false,
+    ['sign'],
+  )
+  .then((key) => {
+    return crypto.subtle.sign('HMAC', key, messageData);
+  })
+  .then((signatureBuffer) => {
+    // Convert ArrayBuffer to hex string
+    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
+    const signature = signatureArray
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    // Set the signature header
+    const signatureHeader = `t=${timestamp},v1=${signature}`;
+    pm.request.headers.add({
+      key: 'x-mailer-signature',
+      value: signatureHeader,
+    });
+
+    console.log('HMAC signature generated and added to request');
+    console.log(`Timestamp: ${timestamp}`);
+    console.log(`Signature: ${signature.substring(0, 16)}...`);
+  })
+  .catch((err) => {
+    console.error('Error generating signature:', err);
+    throw new Error(`Failed to generate HMAC signature: ${err.message}`);
+  });
+```
+
+**Setup:**
+
+1. Set an environment variable: `MAILER_SIGNING_SECRET = "your-secret-key"`
+2. Paste the script into the "Pre-request Script" tab
+3. Make sure your request body is set to "raw" with "JSON" format
 
 #### Request Body
 
@@ -653,11 +726,27 @@ The `maxBodySize` is specified in bytes. Common values:
 All requests are logged with:
 
 - Timestamp
-- IP address
+- IP address (when available - see IP Detection below)
 - Endpoint and method
 - Status code
 - Response time
 - Request size
+
+**IP Address Detection:**
+
+IP addresses are detected in the following scenarios:
+
+- **Production with reverse proxy** (nginx, load balancer, etc.): IP from `x-forwarded-for` header ✅
+- **Behind Cloudflare**: IP from `cf-connecting-ip` header ✅
+- **Direct connection** (no proxy): Attempts to get IP from connection (may work) ⚠️
+- **Localhost/testing** (Postman, curl from localhost): Returns `null` (no IP available) ❌
+
+**Important for Production:**
+
+- If using a reverse proxy, ensure it sets the `x-forwarded-for` header
+- Most production setups (nginx, AWS ALB, etc.) set this header automatically
+- Without a reverse proxy or proper headers, IP detection will fail
+- This affects rate limiting and IP allowlisting (they require IP detection)
 
 Special logging for:
 
@@ -665,7 +754,9 @@ Special logging for:
 - Rate limit violations
 - IP allowlist rejections
 - Large requests (>100KB)
-- Slow requests (>1 second)
+- Slow requests:
+  - `/send` endpoint: >10 seconds (email sending via external SMTP typically takes 1-5 seconds)
+  - Other endpoints: >1 second
 
 **PII Handling:** Email addresses and payload content are not logged - only metadata (template ID, account ID, etc.) is recorded.
 

@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { logger } from './logger';
 
 interface VerifySignatureOptions {
   payload: string;
@@ -32,16 +33,24 @@ export function verifySignature(opts: VerifySignatureOptions): boolean {
 
   if (!timestamp || !signatureValue) return false;
 
-  // Check timestamp tolerance (optional but recommended)
-  // Timestamp is in milliseconds (Date.now()), tolerance is in seconds
-  const now = Date.now();
-  const toleranceMs = tolerance * 1000; // Convert seconds to milliseconds
-  if (Math.abs(now - timestamp) > toleranceMs) {
+  // Validate timestamp is in seconds (not milliseconds)
+  // Timestamps in seconds for current time are ~1.7 billion, milliseconds are ~1.7 trillion
+  // Reject timestamps that are clearly in milliseconds range (> 1e12)
+  if (timestamp > 1e12) {
+    logger.warn(
+      { timestamp },
+      'Timestamp appears to be in milliseconds, not seconds',
+    );
+    return false; // Timestamp appears to be in milliseconds, not seconds
+  }
+
+  // Check timestamp tolerance
+  // Date.now() returns milliseconds, so convert to seconds for comparison
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - timestamp) > tolerance) {
     return false; // Signature too old or from future
   }
 
-  // Compute signature: HMAC-SHA512(timestamp + "." + payload, secret)
-  // Note: timestamp should be in milliseconds (e.g., Date.now())
   const expectedSignature = crypto
     .createHmac(algorithm, secret)
     .update(`${timestamp.toString()}.`)

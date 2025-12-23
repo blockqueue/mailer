@@ -4,15 +4,15 @@ auth:
   secret: ${MAILER_SIGNING_SECRET}
   tolerance: 300 # 5 minutes in seconds
 
-ipAllowlist:
-  enabled: true
-  allowedIps:
-    - 192.168.1.0/24
-    - 10.0.0.1
+# ipAllowlist:
+#   enabled: true
+#   allowedIps:
+#     - 192.168.1.0/24
+#     - 10.0.0.1
 
 # Optional: Request validation settings
-requestValidation:
-  maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
+# requestValidation:
+#   maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
 
 accounts:
   zeptomail:
