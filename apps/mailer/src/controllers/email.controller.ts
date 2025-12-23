@@ -5,6 +5,7 @@ import { getRenderer } from '../services/renderer';
 import type { GlobalConfig } from '../types/config';
 import type { SendRequest, SendResponse } from '../types/request';
 import type { TemplateLoader } from '../utils/loaders/template.loader';
+import { logger } from '../utils/logger';
 import { validatePayload } from '../utils/validation/payload';
 
 /**
@@ -94,7 +95,7 @@ export async function sendEmailController(
 
     return c.json(response);
   } catch (error: unknown) {
-    console.error('Error processing send request:', error);
+    logger.error({ error }, 'Error processing send request');
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
     return c.json(

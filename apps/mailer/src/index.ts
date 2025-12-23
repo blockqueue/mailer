@@ -10,6 +10,7 @@ import { requestValidationMiddleware } from './middleware/requestValidation';
 import type { SendRequest } from './types/request';
 import { loadConfig } from './utils/loaders/config.loader';
 import { TemplateLoader } from './utils/loaders/template.loader';
+import { logger } from './utils/logger';
 
 /**
  * Helper to get parsed body from context (set by request validation middleware)
@@ -31,13 +32,13 @@ let templateLoader: TemplateLoader;
 
 try {
   config = loadConfig();
-  console.log('Configuration loaded successfully');
+  logger.info('Configuration loaded successfully');
 
   templateLoader = new TemplateLoader();
   templateLoader.loadAllTemplates();
 } catch (error: unknown) {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-  console.error('Failed to initialize:', errorMessage);
+  logger.error({ error: errorMessage }, 'Failed to initialize');
   throw new Error(`Failed to initialize: ${errorMessage}`);
 }
 

@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { TemplateConfig } from '../../types/template';
+import { logger } from '../logger';
 import { loadYamlWithEnv } from './yaml.loader';
 
 const TEMPLATES_DIR = process.env.TEMPLATES_DIR ?? '/templates';
@@ -16,8 +17,9 @@ export class TemplateLoader {
    */
   loadAllTemplates(): void {
     if (!fs.existsSync(TEMPLATES_DIR)) {
-      console.warn(
-        `Templates directory not found at ${TEMPLATES_DIR}. Make sure it's mounted as a volume.`,
+      logger.warn(
+        { templatesDir: TEMPLATES_DIR },
+        "Templates directory not found. Make sure it's mounted as a volume.",
       );
       return;
     }
@@ -31,14 +33,14 @@ export class TemplateLoader {
       try {
         const templateConfig = this.loadTemplate(templateId);
         this.templates.set(templateId, templateConfig);
-        console.log(`Loaded template: ${templateId}`);
+        logger.info({ templateId }, 'Loaded template');
       } catch (error) {
-        console.error(`Failed to load template "${templateId}":`, error);
+        logger.error({ templateId, error }, 'Failed to load template');
         // Continue loading other templates
       }
     }
 
-    console.log(`Loaded ${String(this.templates.size)} template(s)`);
+    logger.info({ count: this.templates.size }, 'Template loading completed');
   }
 
   /**

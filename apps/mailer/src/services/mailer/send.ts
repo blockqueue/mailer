@@ -2,6 +2,7 @@ import type { Transporter } from 'nodemailer';
 import type { AccountConfig } from '../../types/config';
 import type { SendRequest } from '../../types/request';
 import type { TemplateConfig } from '../../types/template';
+import { logger } from '../../utils/logger';
 import { validateEmailAddresses } from '../../utils/validation/email';
 
 /**
@@ -119,7 +120,7 @@ export async function sendEmail(
       success: true,
     };
   } catch (error: unknown) {
-    console.error('Failed to send email:', error);
+    logger.error({ error }, 'Failed to send email');
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
     throw new Error(`Failed to send email: ${errorMessage}`);

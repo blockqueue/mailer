@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { logger } from '../../utils/logger';
 import { resolveTemplatePath } from '../../utils/template/template-path';
 import type { Renderer } from './index';
 
@@ -20,7 +21,7 @@ export class HtmlRenderer implements Renderer {
       (match, varName: string) => {
         const value = payload[varName];
         if (value === undefined || value === null) {
-          console.warn(`Variable ${varName} not found in payload`);
+          logger.warn({ variable: varName }, 'Variable not found in payload');
           return match;
         }
         if (
@@ -30,8 +31,9 @@ export class HtmlRenderer implements Renderer {
         ) {
           return String(value);
         }
-        console.warn(
-          `Variable ${varName} has unsupported type, skipping substitution`,
+        logger.warn(
+          { variable: varName, type: typeof value },
+          'Variable has unsupported type, skipping substitution',
         );
         return match;
       },

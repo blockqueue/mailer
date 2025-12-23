@@ -1,18 +1,7 @@
 import type { Context, Next } from 'hono';
 import type { SendRequest } from '../types/request';
 import { getClientIp } from '../utils/getClientIp';
-
-interface AuditLogEntry {
-  timestamp: string;
-  ip: string | null;
-  method: string;
-  path: string;
-  statusCode: number;
-  requestSize?: number;
-  responseTime: number;
-  templateId?: string;
-  accountId?: string;
-}
+import { logger } from '../utils/logger';
 
 /**
  * Extract metadata from parsed request body
@@ -81,68 +70,87 @@ export function auditLogMiddleware() {
     const responseTime = Date.now() - startTime;
     const statusCode = c.res.status;
 
-    const logEntry: AuditLogEntry = {
-      timestamp: new Date().toISOString(),
-      ip,
-      method,
-      path,
-      statusCode,
-      requestSize,
-      responseTime,
-      templateId,
-      accountId,
-    };
-
     // Log all requests
-    console.log(JSON.stringify(logEntry));
+    logger.info(
+      {
+        ip,
+        method,
+        path,
+        statusCode,
+        requestSize,
+        responseTime,
+        templateId,
+        accountId,
+      },
+      'Request processed',
+    );
 
     // Special logging for important events
     if (statusCode === 401) {
-      console.warn(
-        JSON.stringify({
-          ...logEntry,
-          event: 'authentication_failed',
-        }),
+      logger.warn(
+        {
+          ip,
+          method,
+          path,
+          statusCode,
+          templateId,
+          accountId,
+        },
+        'Authentication failed',
       );
     }
 
     if (statusCode === 403) {
-      console.warn(
-        JSON.stringify({
-          ...logEntry,
-          event: 'access_denied',
-        }),
+      logger.warn(
+        {
+          ip,
+          method,
+          path,
+          statusCode,
+          templateId,
+          accountId,
+        },
+        'Access denied',
       );
     }
 
     if (statusCode === 429) {
-      console.warn(
-        JSON.stringify({
-          ...logEntry,
-          event: 'rate_limit_exceeded',
-        }),
+      logger.warn(
+        {
+          ip,
+          method,
+          path,
+          statusCode,
+          templateId,
+          accountId,
+        },
+        'Rate limit exceeded',
       );
     }
 
     if (requestSize && requestSize > 100 * 1024) {
       // Log large requests (>100KB)
-      console.warn(
-        JSON.stringify({
-          ...logEntry,
-          event: 'large_request',
-          size: requestSize,
-        }),
+      logger.warn(
+        {
+          ip,
+          method,
+          path,
+          requestSize,
+        },
+        'Large request detected',
       );
     }
 
     if (responseTime > 1000) {
       // Log slow requests (>1 second)
-      console.warn(
-        JSON.stringify({
-          ...logEntry,
-          event: 'slow_request',
+      logger.warn(
+        {
+          ip,
+          method,
+          path,
           responseTime,
-        }),
+        },
+        'Slow request detected',
       );
     }
   };
