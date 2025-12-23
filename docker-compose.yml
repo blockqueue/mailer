@@ -12,8 +12,16 @@ services:
     env_file:
       - apps/mailer/.env
 
-  bq-mailer-test:
+  # for building a local prod version
+  bq-mailer-build:
+    build:
+      context: .
+      dockerfile: ./docker/mailer/Dockerfile.prod
     image: blockqueue/mailer:latest
+
+  bq-mailer-test:
+    image: blockqueue/mailer:latest # for testing the locally built image
+    # image: ghcr.io/blockqueue/mailer:v0.0.1 # for testing the remote image build
     ports:
       - '3000:3000'
     volumes:

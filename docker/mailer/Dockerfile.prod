@@ -29,13 +29,14 @@ WORKDIR /app
 COPY --from=prune /app/out/full/ .
 COPY --from=prune /app/out/json/package-lock.json .
 
-RUN npm install --legacy-peer-deps
+RUN npm install
 RUN npm run build -- --filter=mailer
 
 
 # Runner stage - Final lightweight image
 FROM oven/bun:1-slim AS runner
 
+ENV NODE_ENV=production
 WORKDIR /app
 
 ## Create non-root user for security

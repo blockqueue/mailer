@@ -1,9 +1,10 @@
 {
   "name": "mailer",
   "scripts": {
-    "dev": "bun run --hot src/index.ts",
+    "dev": "NODE_ENV=development bun run --hot src/index.ts",
+    "start": "NODE_ENV=production bun run dist/index.js",
     "lint": "eslint . --ext .ts,.tsx",
-    "build": "bun build src/index.ts --outdir ./dist --target bun --external react-dom/server --external mjml"
+    "build": "NODE_ENV=production bun build src/index.ts --outdir ./dist --target bun --external react-dom/server --external mjml"
   },
   "dependencies": {
     "@react-email/components": "^1.0.2",

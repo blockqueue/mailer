@@ -1,6 +1,0 @@
-services:
-  mailer:
-    build:
-      context: .
-      dockerfile: ./docker/mailer/Dockerfile.prod
-    image: blockqueue/mailer:latest
