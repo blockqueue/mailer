@@ -29,7 +29,8 @@ This is infrastructure software, not a standalone product. We focus on making it
 - **YAML Configuration**: Configuration files with environment variable substitution
 - **Template Validation**: Templates are validated at startup with JSON Schema
 - **Email Validation**: Automatic validation of all email addresses (from, to, cc, bcc, replyTo)
-- **API Key Authentication**: Simple API key-based authentication
+- **Authentication**: API key or HMAC request signing authentication
+- **Security Features**: Optional IP allowlisting, rate limiting, HTTPS enforcement
 - **Docker Ready**: Single container image with volume mounts for config and templates
 
 ## Table of Contents
@@ -117,11 +118,52 @@ The global configuration file defines authentication, email accounts, and defaul
 
 #### Example Config
 
+**API Key Authentication:**
+
 ```yaml
 auth:
   type: apiKey
   header: x-mailer-api-key
   value: ${MAILER_API_KEY}
+```
+
+**HMAC Request Signing (Recommended for public internet):**
+
+```yaml
+auth:
+  type: hmac
+  header: x-mailer-signature # Optional, defaults to 'x-mailer-signature'
+  secret: ${MAILER_SIGNING_SECRET}
+  tolerance: 300 # Timestamp tolerance in seconds (default: 300 = 5 minutes)
+
+# Optional: IP allowlisting
+ipAllowlist:
+  enabled: true
+  allowedIps:
+    - 192.168.1.0/24 # CIDR notation
+    - 10.0.0.1 # Single IP
+
+# Optional: Rate limiting (user-configurable limits, strongly recommend IP allowlisting if you want to use rate limiting)
+rateLimit:
+  enabled: true
+  maxRequests: 100 # User-defined based on their usage
+  windowMinutes: 1
+  maxRequestsPerHour: 1000 # User-defined based on their usage
+  windowHours: 1
+
+# Optional: Request validation settings
+requestValidation:
+  maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
+```
+
+**Full Example:**
+
+```yaml
+auth:
+  type: hmac
+  header: x-mailer-signature
+  secret: ${MAILER_SIGNING_SECRET}
+  tolerance: 300 # 5 minutes in seconds
 
 accounts:
   primary:
@@ -147,6 +189,10 @@ accounts:
 defaults:
   account: primary
   renderer: react-email
+
+# Optional: Request validation settings
+requestValidation:
+  maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
 ```
 
 #### Environment Variable Substitution
@@ -227,7 +273,7 @@ Templates are organized in directories under `/templates/`. Each template direct
 ```yaml
 id: welcome
 renderer: react-email
-defaultAccount: primary # Optional: default account for this template
+account: primary # Optional: default account for this template
 schema:
   type: object
   required:
@@ -244,7 +290,7 @@ schema:
 
 - `id` (required): Unique template identifier (must match directory name)
 - `renderer` (optional): Template renderer type (`react-email`, `mjml`, or `html`). Falls back to global default.
-- `defaultAccount` (optional): Default account to use for this template. Falls back to global default.
+- `account` (optional): Default account to use for this template. Falls back to global default.
 - `schema` (required): JSON Schema for payload validation
 
 ### React Email Template (`index.tsx`)
@@ -312,8 +358,49 @@ Send an email using a template.
 
 #### Headers
 
+**API Key Authentication:**
+
 ```
 x-mailer-api-key: <your-api-key>
+```
+
+**HMAC Request Signing:**
+
+```
+x-mailer-signature: t=<timestamp>,v1=<signature>
+```
+
+The signature header format is `t=<timestamp>,v1=<signature>` where:
+
+- `timestamp` is the current Unix timestamp in milliseconds (e.g., `Date.now()`)
+- `signature` is the HMAC-SHA512 hash of `timestamp + "." + requestBody` using your signing secret
+
+**Client Implementation Example (Node.js):**
+
+```javascript
+const crypto = require('crypto');
+
+function generateSignature(secret, body) {
+  const timestamp = Date.now();
+  const payload = `${timestamp}.${JSON.stringify(body)}`;
+  const signature = crypto
+    .createHmac('sha512', secret)
+    .update(payload)
+    .digest('hex');
+  return `t=${timestamp},v1=${signature}`;
+}
+
+const body = { templateId: 'welcome', payload: {...} };
+const signature = generateSignature(process.env.MAILER_SIGNING_SECRET, body);
+
+fetch('https://mailer.example.com/send', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-mailer-signature': signature,
+  },
+  body: JSON.stringify(body),
+});
 ```
 
 #### Request Body
@@ -341,7 +428,7 @@ x-mailer-api-key: <your-api-key>
 **Request Fields:**
 
 - `templateId` (required): The template ID to use
-- `account` (optional): Account to use. Falls back to `template.defaultAccount` or `config.defaults.account`
+- `account` (optional): Account to use. Falls back to `template.account` or `config.defaults.account`
 - `payload` (required): Data to pass to the template (must match template schema)
 - `sendMailOptions` (optional): Email sending options
   - `to` (required): Recipient email address(es) - string or array of strings
@@ -368,7 +455,7 @@ x-mailer-api-key: <your-api-key>
 
 The system resolves configuration values in the following priority order:
 
-- **Account**: `request.account` > `template.defaultAccount` > `config.defaults.account`
+- **Account**: `request.account` > `template.account` > `config.defaults.account`
 - **Renderer**: `template.renderer` > `config.defaults.renderer`
 - **Email Options**: `request.sendMailOptions` > `account.from` (for `from` field only)
 
@@ -476,6 +563,111 @@ All email addresses are automatically validated before sending:
   "error": "Missing required field: 'from' in sendMailOptions. Provide it in request.sendMailOptions or account.from (for 'from' field only)"
 }
 ```
+
+## Security Features
+
+### Authentication
+
+The service supports two authentication methods:
+
+1. **API Key**: Simple string-based authentication (suitable for internal services)
+2. **HMAC Request Signing**: Cryptographic signature-based authentication (recommended for public internet)
+
+HMAC authentication provides:
+
+- Request integrity verification
+- Replay attack prevention (via timestamp tolerance)
+- No token storage required
+
+### IP Allowlisting (Optional)
+
+IP allowlisting restricts access to specific IP addresses or CIDR blocks. This is useful for server-to-server communication where you know the source IPs.
+
+**Configuration:**
+
+```yaml
+ipAllowlist:
+  enabled: true
+  allowedIps:
+    - 192.168.1.0/24 # CIDR notation (all IPs in subnet)
+    - 10.0.0.1 # Single IP address
+```
+
+**When to use:**
+
+- Server-to-server communication with known backend IPs
+- Additional layer of security beyond authentication
+- Can reduce the need for aggressive rate limiting
+
+### Rate Limiting (Optional)
+
+Rate limiting prevents abuse by limiting the number of requests per time window. **Strongly recommended to use IP allowlisting alongside rate limiting** for server-to-server communication.
+
+**Configuration:**
+
+```yaml
+rateLimit:
+  enabled: true
+  maxRequests: 100 # Maximum requests per window
+  windowMinutes: 1 # Time window in minutes
+  maxRequestsPerHour: 1000 # Maximum requests per hour
+  windowHours: 1 # Hourly window
+```
+
+**How it works:**
+
+- Tracks requests by IP address using a sliding window algorithm
+- Applies both per-minute and per-hour limits (if configured)
+- Returns `429 Too Many Requests` with `Retry-After` header when limit exceeded
+- Fully user-configurable - set limits based on your usage patterns
+
+**Recommendation:**
+
+- For server-to-server communication, use IP allowlisting to restrict access, then add rate limiting to protect against bugs, compromised servers, or enforce quotas
+- Rate limiting is optional and can be disabled entirely
+
+### HTTPS Enforcement
+
+HTTPS is enforced for all requests (except localhost for development). The service checks the `x-forwarded-proto` header from reverse proxies.
+
+### Request Validation
+
+- Body size limit: 1MB default (configurable via `requestValidation.maxBodySize`)
+- Content-Type validation: Requires `application/json` for POST requests
+
+**Configuration:**
+
+```yaml
+requestValidation:
+  maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
+```
+
+The `maxBodySize` is specified in bytes. Common values:
+
+- `1048576` = 1MB (default)
+- `2097152` = 2MB
+- `5242880` = 5MB
+
+### Audit Logging
+
+All requests are logged with:
+
+- Timestamp
+- IP address
+- Endpoint and method
+- Status code
+- Response time
+- Request size
+
+Special logging for:
+
+- Failed authentication attempts
+- Rate limit violations
+- IP allowlist rejections
+- Large requests (>100KB)
+- Slow requests (>1 second)
+
+**PII Handling:** Email addresses and payload content are not logged - only metadata (template ID, account ID, etc.) is recorded.
 
 ## Development
 

@@ -47,7 +47,7 @@ export async function sendEmailController(
 
     // Resolve account (request > template > global default)
     const accountId =
-      body.account ?? template.defaultAccount ?? config.defaults?.account;
+      body.account ?? template.account ?? config.defaults?.account;
     if (!accountId) {
       return c.json(
         { error: 'No account specified and no default account configured' },

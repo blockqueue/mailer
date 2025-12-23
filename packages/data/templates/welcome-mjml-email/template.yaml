@@ -1,5 +1,6 @@
 id: welcome-mjml-email
 renderer: mjml
+account: ses
 schema:
   type: object
   required:

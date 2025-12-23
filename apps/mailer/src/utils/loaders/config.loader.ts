@@ -23,17 +23,24 @@ export function loadConfig(): GlobalConfig {
   }
   // Validate auth type at runtime (YAML might have wrong type)
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (config.auth.type !== 'apiKey') {
+  if (!config.auth.type || !['apiKey', 'hmac'].includes(config.auth.type)) {
     throw new Error(
-      `Config auth.type must be "apiKey", got: ${String(config.auth.type)}`,
+      `Config auth.type must be "apiKey" or "hmac", got: ${config.auth.type}`,
     );
   }
 
-  if (!config.auth.header) {
-    throw new Error('Config auth.header is required');
-  }
-  if (!config.auth.value) {
-    throw new Error('Config auth.value is required');
+  // Validate based on auth type (discriminated union)
+  if (config.auth.type === 'apiKey') {
+    if (!config.auth.value) {
+      throw new Error('Config auth.value is required for apiKey auth');
+    }
+    // header is optional for API key, defaults to 'x-mailer-api-key'
+  } else {
+    // TypeScript narrows this to 'hmac' after the apiKey check
+    if (!config.auth.secret) {
+      throw new Error('Config auth.secret is required for hmac auth');
+    }
+    // header is optional for HMAC, defaults to 'x-mailer-signature'
   }
   if (Object.keys(config.accounts).length === 0) {
     throw new Error('Config must have at least one account in accounts');
