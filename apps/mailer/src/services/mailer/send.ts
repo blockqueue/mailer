@@ -8,7 +8,8 @@ import { validateEmailAddresses } from '../../utils/validation/email';
 /**
  * Merge sendMail options from multiple sources with priority:
  * 1. Request body sendMailOptions (highest priority - can override everything)
- * 2. Account-level 'from' field (lowest priority, fallback)
+ * 2. Template-level 'from' field (middle priority)
+ * 3. Account-level 'from' field (lowest priority, fallback)
  */
 interface SendMailOptions {
   from?: string;
@@ -21,20 +22,25 @@ interface SendMailOptions {
   attachments?: unknown[];
   [key: string]: unknown;
 }
-
 function mergeSendMailOptions(
   requestSendMailOptions: SendRequest['sendMailOptions'],
+  template: TemplateConfig,
   accountConfig: AccountConfig,
 ): SendMailOptions {
   const merged: SendMailOptions = {};
 
   // Start with account-level 'from' field (if present, e.g., for SMTP accounts)
-  // This is the fallback for 'from' if not provided in request
+  // This is the lowest priority fallback for 'from'
   if ('from' in accountConfig && typeof accountConfig.from === 'string') {
     merged.from = accountConfig.from;
   }
 
-  // Apply request sendMailOptions (highest priority - can override 'from' from config)
+  // Apply template-level 'from' field (middle priority - overrides account)
+  if (template.from && typeof template.from === 'string') {
+    merged.from = template.from;
+  }
+
+  // Apply request sendMailOptions (highest priority - can override 'from' from template or account)
   if (requestSendMailOptions) {
     Object.assign(merged, requestSendMailOptions);
   }
@@ -95,9 +101,10 @@ export async function sendEmail(
   accountConfig: AccountConfig,
 ): Promise<{ messageId: string; success: boolean }> {
   // Merge sendMail options from all sources
-  // Priority: request.sendMailOptions > account.from (fallback)
+  // Priority: request.sendMailOptions > template.from > account.from (fallback)
   const sendMailOptions = mergeSendMailOptions(
     request.sendMailOptions,
+    template,
     accountConfig,
   );
 

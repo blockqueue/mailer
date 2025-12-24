@@ -26,9 +26,11 @@ export function validateEmailAddresses(
 ): string[] {
   // Check if required field is missing
   if (required && !emails) {
-    throw new Error(
-      `Missing required field: '${fieldName}' in sendMailOptions. Provide it in request.sendMailOptions or account.from (for 'from' field only)`,
-    );
+    const errorMessage =
+      fieldName === 'from'
+        ? `Missing required field: '${fieldName}' in sendMailOptions. Provide it in request.sendMailOptions, template.from, or account.from`
+        : `Missing required field: '${fieldName}' in sendMailOptions`;
+    throw new Error(errorMessage);
   }
 
   // If not required and not provided, return empty array

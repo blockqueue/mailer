@@ -274,6 +274,7 @@ Templates are organized in directories under `/templates/`. Each template direct
 id: welcome
 renderer: react-email
 account: primary # Optional: default account for this template
+from: noreply@example.com # Optional: default 'from' address for this template
 schema:
   type: object
   required:
@@ -291,6 +292,7 @@ schema:
 - `id` (required): Unique template identifier (must match directory name)
 - `renderer` (optional): Template renderer type (`react-email`, `mjml`, or `html`). Falls back to global default.
 - `account` (optional): Default account to use for this template. Falls back to global default.
+- `from` (optional): Default 'from' email address for this template. Falls back to `account.from` if not provided.
 - `schema` (required): JSON Schema for payload validation
 
 ### React Email Template (`index.tsx`)
@@ -505,7 +507,7 @@ crypto.subtle
 - `payload` (required): Data to pass to the template (must match template schema)
 - `sendMailOptions` (optional): Email sending options
   - `to` (required): Recipient email address(es) - string or array of strings
-  - `from` (optional): Sender email address. Falls back to `account.from` if not provided
+  - `from` (optional): Sender email address. Falls back to `template.from` > `account.from` if not provided
   - `subject` (optional): Email subject
   - `cc` (optional): CC recipient(s) - string or array of strings
   - `bcc` (optional): BCC recipient(s) - string or array of strings
@@ -530,11 +532,11 @@ The system resolves configuration values in the following priority order:
 
 - **Account**: `request.account` > `template.account` > `config.defaults.account`
 - **Renderer**: `template.renderer` > `config.defaults.renderer`
-- **Email Options**: `request.sendMailOptions` > `account.from` (for `from` field only)
+- **Email Options**: `request.sendMailOptions` > `template.from` > `account.from` (for `from` field only)
 
 **Email Options Merge:**
 
-1. `account.from` is used as fallback for the `from` field if not provided in `request.sendMailOptions`
+1. The `from` field is resolved with the following priority: `request.sendMailOptions.from` (highest) > `template.from` > `account.from` (lowest)
 2. All other fields (`to`, `subject`, `cc`, `bcc`, `replyTo`, etc.) must be provided in `request.sendMailOptions` if needed
 
 ### GET /health
@@ -633,7 +635,7 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Missing required field: 'from' in sendMailOptions. Provide it in request.sendMailOptions or account.from (for 'from' field only)"
+  "error": "Missing required field: 'from' in sendMailOptions. Provide it in request.sendMailOptions, template.from, or account.from (for 'from' field only)"
 }
 ```
 
