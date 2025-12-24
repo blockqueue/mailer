@@ -1,7 +1,10 @@
 {
   "cSpell.words": [
     "blockqueue",
+    "htmlbody",
     "MJML",
-    "pino"
-  ]
+    "pino",
+    "zeptomail"
+  ],
+  "typescript.tsdk": "node_modules/typescript/lib"
 }

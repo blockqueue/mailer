@@ -1,4 +1,5 @@
 import { Img, Link } from '@react-email/components';
+import * as config from '../_utility/config';
 
 type SocialLinksProps = {
   instagram?: string;
@@ -11,29 +12,29 @@ export function SocialLinks(props: SocialLinksProps) {
     {
       name: 'Instagram',
       href: props.instagram,
-      icon: 'https://raw.githubusercontent.com/blockqueue/mailer/packages/data/logos/instagram.svg',
+      icon: `${config.blockQueueDomain}/images/mailer/instagram.png`,
     },
     {
       name: 'LinkedIn',
       href: props.linkedin,
-      icon: 'https://raw.githubusercontent.com/blockqueue/mailer/packages/data/logos/linkedin.svg',
+      icon: `${config.blockQueueDomain}/images/mailer/linkedin.png`,
     },
     {
       name: 'Facebook',
       href: props.facebook,
-      icon: 'https://raw.githubusercontent.com/blockqueue/mailer/packages/data/logos/facebook.svg',
+      icon: `${config.blockQueueDomain}/images/mailer/facebook.png`,
     },
     {
       name: 'Twitter',
       href: props.twitter,
-      icon: 'https://raw.githubusercontent.com/blockqueue/mailer/packages/data/logos/twitter.svg',
+      icon: `${config.blockQueueDomain}/images/mailer/twitter.png`,
     },
   ];
   return (
-    <div className="mt-2 flex items-center justify-center">
+    <div className="flex items-center justify-center">
       {socialLinks.map((link) => (
         <Link href={link.href} className="mx-1" key={link.name}>
-          <Img src={link.icon} width="22" height="22" alt={link.name} />
+          <Img src={link.icon} width="20" height="20" alt={link.name} />
         </Link>
       ))}
     </div>

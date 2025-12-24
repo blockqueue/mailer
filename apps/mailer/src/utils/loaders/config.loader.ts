@@ -1,4 +1,6 @@
 import * as fs from 'fs';
+import { SesEmailClient } from '../../services/mailer/ses-client';
+import { ZeptomailEmailClient } from '../../services/mailer/zeptomail-client';
 import type { GlobalConfig } from '../../types/config';
 import { loadYamlWithEnv } from './yaml.loader';
 
@@ -46,10 +48,30 @@ export function loadConfig(): GlobalConfig {
     throw new Error('Config must have at least one account in accounts');
   }
 
-  // Validate each account has a type
-  for (const [accountId, account] of Object.entries(config.accounts)) {
-    if (!account.type) {
-      throw new Error(`Account "${accountId}" is missing required field: type`);
+  // Validate each account has a type and required credentials
+  for (const accountId of Object.keys(config.accounts)) {
+    const accountConfig = config.accounts[accountId];
+
+    // Validate account-specific credentials
+    try {
+      switch (accountConfig.type) {
+        case 'ses':
+          SesEmailClient.validateCredentials(accountConfig);
+          break;
+        case 'zeptomail':
+          ZeptomailEmailClient.validateCredentials(accountConfig);
+          break;
+        default: {
+          const _exhaustive: never = accountConfig;
+          throw new Error(`Unknown account type: ${String(_exhaustive)}`);
+        }
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(
+        `Account "${accountId}" validation failed: ${errorMessage}`,
+      );
     }
   }
 

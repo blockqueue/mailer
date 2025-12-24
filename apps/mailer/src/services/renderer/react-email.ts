@@ -1,6 +1,12 @@
 import { render } from '@react-email/render';
+import type { ReactElement } from 'react';
 import { resolveTemplatePath } from '../../utils/template/template-path';
 import type { Renderer } from './index';
+
+type EmailComponent = (props: Record<string, unknown>) => ReactElement;
+interface EmailModule {
+  default: EmailComponent;
+}
 
 export class ReactEmailRenderer implements Renderer {
   async render(
@@ -9,21 +15,16 @@ export class ReactEmailRenderer implements Renderer {
   ): Promise<string> {
     // Resolve and validate the template path
     const absolutePath = resolveTemplatePath(templatePath);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const module = await import(absolutePath);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    const Component = module.default;
-    if (!Component) {
+
+    const module = (await import(absolutePath)) as EmailModule;
+    if (typeof module.default !== 'function') {
       throw new Error(
-        `Template ${templatePath} does not export a default component`,
+        `'Email' component not exported from template ${templatePath}`,
       );
     }
 
-    // Use @react-email/render to render the component with payload as props
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument
-    const html = await render(Component(payload), {
-      pretty: true,
-    });
+    const emailElement = module.default(payload);
+    const html = await render(emailElement);
 
     return html;
   }

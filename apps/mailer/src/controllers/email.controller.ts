@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
+import { createEmailClient } from '../services/mailer/createEmailClient';
 import { sendEmail } from '../services/mailer/send';
-import { createTransport } from '../services/mailer/transport';
 import { getRenderer } from '../services/renderer';
 import type { GlobalConfig } from '../types/config';
 import type { SendRequest, SendResponse } from '../types/request';
@@ -73,20 +73,14 @@ export async function sendEmailController(
     // Render email HTML
     const html = await renderer.render(template.templatePath, body.payload);
 
-    // Create nodemailer transport
-    const transport = createTransport(accountConfig);
+    // Create email client
+    const client = createEmailClient(accountConfig);
 
     // Send email
-    const result = await sendEmail(
-      transport,
-      html,
-      body,
-      template,
-      accountConfig,
-    );
+    const result = await sendEmail(client, html, body, template, accountConfig);
 
-    // Close transport connection
-    transport.close();
+    // Close client connection
+    await client.close();
 
     const response: SendResponse = {
       messageId: result.messageId,
@@ -95,9 +89,16 @@ export async function sendEmailController(
 
     return c.json(response);
   } catch (error: unknown) {
-    logger.error({ error }, 'Error processing send request');
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logger.error(
+      {
+        error: errorMessage,
+        ...(errorStack && { stack: errorStack }),
+      },
+      'Error processing send request',
+    );
     return c.json(
       {
         error: 'Internal server error',

@@ -1,21 +1,6 @@
-import { Tailwind, pixelBasedPreset } from '@react-email/components';
-
-const tailwindConfig = {
-  presets: [pixelBasedPreset],
-  theme: {
-    extend: {
-      colors: {
-        brand: '#007291',
-      },
-    },
-  },
-};
+import { Tailwind } from '@react-email/components';
 
 type TailwindWrapperProps = { children: React.ReactNode };
 export function TailwindWrapper(props: TailwindWrapperProps) {
-  return (
-    <Tailwind config={{ theme: tailwindConfig.theme, important: true }}>
-      {props.children}
-    </Tailwind>
-  );
+  return <Tailwind>{props.children}</Tailwind>;
 }

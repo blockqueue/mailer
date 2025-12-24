@@ -1,15 +1,17 @@
-import type { Transporter } from 'nodemailer';
 import type { AccountConfig } from '../../types/config';
 import type { SendRequest } from '../../types/request';
 import type { TemplateConfig } from '../../types/template';
 import { logger } from '../../utils/logger';
 import { validateEmailAddresses } from '../../utils/validation/email';
+import type { EmailClient, EmailOptions } from './base-client';
 
 /**
  * Merge sendMail options from multiple sources with priority:
  * 1. Request body sendMailOptions (highest priority - can override everything)
- * 2. Template-level 'from' field (middle priority)
- * 3. Account-level 'from' field (lowest priority, fallback)
+ * 2. Template-level options (middle priority - overrides account)
+ * 3. Account-level options (lowest priority, fallback)
+ *
+ * For each property, only use it if it's explicitly provided and non-empty.
  */
 interface SendMailOptions {
   from?: string;
@@ -22,6 +24,24 @@ interface SendMailOptions {
   attachments?: unknown[];
   [key: string]: unknown;
 }
+
+/**
+ * Check if a value is a non-empty string or a non-empty array
+ */
+function isValidValue(value: unknown): boolean {
+  if (value === undefined || value === null) {
+    return false;
+  }
+  if (typeof value === 'string') {
+    return value.trim().length > 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  // For other types (numbers, booleans, objects), consider them valid if they exist
+  return true;
+}
+
 function mergeSendMailOptions(
   requestSendMailOptions: SendRequest['sendMailOptions'],
   template: TemplateConfig,
@@ -29,20 +49,55 @@ function mergeSendMailOptions(
 ): SendMailOptions {
   const merged: SendMailOptions = {};
 
-  // Start with account-level 'from' field (if present, e.g., for SMTP accounts)
-  // This is the lowest priority fallback for 'from'
-  if ('from' in accountConfig && typeof accountConfig.from === 'string') {
-    merged.from = accountConfig.from;
+  // Step 1: Start with account-level options (lowest priority)
+  // Account config can have any sendMail options (from, to, subject, etc.)
+  for (const [key, value] of Object.entries(accountConfig)) {
+    // Skip account-specific fields that aren't sendMail options
+    if (
+      key === 'type' ||
+      key === 'host' ||
+      key === 'port' ||
+      key === 'secure' ||
+      key === 'auth' ||
+      key === 'path' ||
+      key === 'region' ||
+      key === 'apiKey' ||
+      key === 'accessKeyId' ||
+      key === 'secretAccessKey' ||
+      key === 'bounceAddress'
+    ) {
+      continue;
+    }
+    if (isValidValue(value)) {
+      merged[key] = value;
+    }
   }
 
-  // Apply template-level 'from' field (middle priority - overrides account)
-  if (template.from && typeof template.from === 'string') {
-    merged.from = template.from;
+  // Step 2: Apply template-level options (middle priority - overrides account)
+  // Template can have any sendMail options
+  for (const [key, value] of Object.entries(template)) {
+    // Skip template-specific fields that aren't sendMail options
+    if (
+      key === 'id' ||
+      key === 'renderer' ||
+      key === 'account' ||
+      key === 'schema' ||
+      key === 'templatePath'
+    ) {
+      continue;
+    }
+    if (isValidValue(value)) {
+      merged[key] = value;
+    }
   }
 
-  // Apply request sendMailOptions (highest priority - can override 'from' from template or account)
+  // Step 3: Apply request sendMailOptions (highest priority - overrides template and account)
   if (requestSendMailOptions) {
-    Object.assign(merged, requestSendMailOptions);
+    for (const [key, value] of Object.entries(requestSendMailOptions)) {
+      if (isValidValue(value)) {
+        merged[key] = value;
+      }
+    }
   }
 
   return merged;
@@ -91,10 +146,10 @@ function validateSendMailOptions(options: SendMailOptions): void {
 }
 
 /**
- * Send an email using nodemailer transport
+ * Send an email using an email client
  */
 export async function sendEmail(
-  transport: Transporter,
+  client: EmailClient,
   html: string,
   request: SendRequest,
   template: TemplateConfig,
@@ -111,25 +166,49 @@ export async function sendEmail(
   // Validate all email addresses
   validateSendMailOptions(sendMailOptions);
 
-  // Set HTML body
-  sendMailOptions.html = html;
+  // Ensure required fields are present
+  if (!sendMailOptions.from) {
+    throw new Error('Missing required field: from');
+  }
+  if (!sendMailOptions.to) {
+    throw new Error('Missing required field: to');
+  }
+  if (!sendMailOptions.subject) {
+    throw new Error('Missing required field: subject');
+  }
+
+  // Prepare email options
+  const emailOptions: EmailOptions = {
+    from: sendMailOptions.from,
+    to: sendMailOptions.to,
+    subject: sendMailOptions.subject,
+    html,
+    ...(sendMailOptions.cc && { cc: sendMailOptions.cc }),
+    ...(sendMailOptions.bcc && { bcc: sendMailOptions.bcc }),
+    ...(sendMailOptions.replyTo && { replyTo: sendMailOptions.replyTo }),
+    ...(sendMailOptions.attachments && {
+      attachments: sendMailOptions.attachments as EmailOptions['attachments'],
+    }),
+  };
 
   // Send the email
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const info = await transport.sendMail(
-      sendMailOptions as Parameters<Transporter['sendMail']>[0],
-    );
-
-    const messageId = (info as { messageId?: string }).messageId ?? '';
+    const result = await client.send(emailOptions);
     return {
-      messageId,
-      success: true,
+      messageId: result.messageId,
+      success: result.success,
     };
   } catch (error: unknown) {
-    logger.error({ error }, 'Failed to send email');
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logger.error(
+      {
+        error: errorMessage,
+        ...(errorStack && { stack: errorStack }),
+      },
+      'Failed to send email',
+    );
     throw new Error(`Failed to send email: ${errorMessage}`);
   }
 }

@@ -1,0 +1,12 @@
+id: pg-magic-login-link
+from: ${FROM_EMAIL:-noreply@example.com}
+schema:
+  type: object
+  required:
+    - email
+    - url
+  properties:
+    email:
+      type: string
+    url:
+      type: string

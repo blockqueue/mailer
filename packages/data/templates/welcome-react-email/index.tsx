@@ -13,7 +13,7 @@ interface WelcomeEmailProps {
   userName: string;
   appName: string;
 }
-export default function WelcomeEmail(props: WelcomeEmailProps) {
+export function Email(props: WelcomeEmailProps) {
   const { userName, appName } = props;
   return (
     <Html>
@@ -39,3 +39,5 @@ export default function WelcomeEmail(props: WelcomeEmailProps) {
     </Html>
   );
 }
+
+export default Email;

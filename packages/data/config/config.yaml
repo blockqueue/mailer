@@ -16,24 +16,17 @@ auth:
 
 accounts:
   zeptomail:
-    type: smtp
+    type: zeptomail
     from: ${MAIL_FROM_EMAIL}
-    host: smtp.zeptomail.com
-    port: 587
-    secure: false
-    auth:
-      user: ${SMTP_USER}
-      pass: ${SMTP_PASSWORD}
+    apiKey: ${ZEPTOMAIL_API_KEY}
+    # bounceAddress: ${ZEPTOMAIL_BOUNCE_ADDRESS}  # Optional
 
-  ses:
-    type: smtp
-    from: ${MAIL_FROM_EMAIL}
-    host: smtp.aws.com
-    port: 587
-    secure: false
-    auth:
-      user: ${SMTP_USER}
-      pass: ${SMTP_PASSWORD}
+  # ses:
+  #   type: ses
+  #   from: ${MAIL_FROM_EMAIL}
+  #   region: ${AWS_REGION} # e.g., us-east-1
+  #   accessKeyId: ${AWS_ACCESS_KEY_ID}
+  #   secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
 
 defaults:
   account: zeptomail

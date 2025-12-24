@@ -10,14 +10,17 @@ function substituteEnvVars(value: string): string {
     /\$\{([^}:-]+)(:-([^}]*))?\}/g,
     (match, varName: string, _: string, defaultValue: string | undefined) => {
       const envValue = process.env[varName];
-      if (envValue !== undefined) {
+      // Use env value if it's set and non-empty (standard shell behavior: ${VAR:-default})
+      if (envValue !== undefined && envValue !== '') {
         return envValue;
       }
+      // Fall back to default value if provided
       if (defaultValue !== undefined) {
         return defaultValue;
       }
+      // If no default and env var is unset or empty, throw error
       throw new Error(
-        `Environment variable ${varName} is not set and no default value provided`,
+        `Environment variable ${varName} is not set (or is empty) and no default value provided`,
       );
     },
   );
