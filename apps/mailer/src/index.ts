@@ -34,8 +34,19 @@ try {
   config = loadConfig();
   logger.info('Configuration loaded successfully');
 
-  templateLoader = new TemplateLoader();
-  templateLoader.loadAllTemplates();
+  templateLoader = new TemplateLoader(config.defaults?.renderer);
+  const loadResult = templateLoader.loadAllTemplates();
+
+  // Warn if no templates loaded successfully
+  if (loadResult.successCount === 0 && loadResult.failureCount > 0) {
+    logger.error(
+      {
+        failureCount: loadResult.failureCount,
+        failures: loadResult.failures,
+      },
+      'No templates loaded successfully. Server will start but email sending will fail.',
+    );
+  }
 } catch (error: unknown) {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error';
   logger.error({ error: errorMessage }, 'Failed to initialize');

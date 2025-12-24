@@ -11,17 +11,27 @@ export class TemplateLoader {
     string,
     TemplateConfig & { templatePath: string }
   >();
+  private defaultRenderer?: 'react-email' | 'mjml' | 'html';
+
+  constructor(defaultRenderer?: 'react-email' | 'mjml' | 'html') {
+    this.defaultRenderer = defaultRenderer;
+  }
 
   /**
    * Load and validate all templates at startup
+   * @returns Object with success count, failure count, and whether to fail startup
    */
-  loadAllTemplates(): void {
+  loadAllTemplates(): {
+    successCount: number;
+    failureCount: number;
+    failures: { templateId: string; error: string }[];
+  } {
     if (!fs.existsSync(TEMPLATES_DIR)) {
       logger.warn(
         { templatesDir: TEMPLATES_DIR },
         "Templates directory not found. Make sure it's mounted as a volume.",
       );
-      return;
+      return { successCount: 0, failureCount: 0, failures: [] };
     }
 
     const templateDirs = fs
@@ -29,18 +39,58 @@ export class TemplateLoader {
       .filter((dirent) => dirent.isDirectory() && !dirent.name.startsWith('_'))
       .map((dirent) => dirent.name);
 
+    const failures: { templateId: string; error: string }[] = [];
+
     for (const templateId of templateDirs) {
       try {
         const templateConfig = this.loadTemplate(templateId);
         this.templates.set(templateId, templateConfig);
         logger.info({ templateId }, 'Loaded template');
       } catch (error) {
-        logger.error({ templateId, error }, 'Failed to load template');
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        failures.push({ templateId, error: errorMessage });
+        logger.error(
+          {
+            templateId,
+            error: errorMessage,
+            ...(errorStack && { stack: errorStack }),
+          },
+          'Failed to load template',
+        );
         // Continue loading other templates
       }
     }
 
-    logger.info({ count: this.templates.size }, 'Template loading completed');
+    const successCount = this.templates.size;
+    const failureCount = failures.length;
+
+    logger.info(
+      { successCount, failureCount, total: templateDirs.length },
+      'Template loading completed',
+    );
+
+    if (failureCount > 0 && successCount === 0) {
+      logger.error(
+        {
+          failureCount,
+          failures: failures.map((f) => `${f.templateId}: ${f.error}`),
+        },
+        'All templates failed to load. Server will start but email sending may fail.',
+      );
+    } else if (failureCount > 0) {
+      logger.warn(
+        {
+          failureCount,
+          successCount,
+          failures: failures.map((f) => `${f.templateId}: ${f.error}`),
+        },
+        'Some templates failed to load',
+      );
+    }
+
+    return { successCount, failureCount, failures };
   }
 
   /**
@@ -68,7 +118,9 @@ export class TemplateLoader {
       );
     }
 
-    const rendererType = config.renderer;
+    // Use template renderer or fall back to default renderer
+    const rendererType = config.renderer ?? this.defaultRenderer;
+
     // Renderer is validated by type, but check anyway
     if (
       rendererType &&
@@ -86,12 +138,14 @@ export class TemplateLoader {
     }
 
     // Determine template file path based on renderer
+    // Use the resolved renderer type (template renderer or default)
     let templatePath: string;
-    if (config.renderer === 'react-email') {
+    if (rendererType === 'react-email') {
       templatePath = path.join(templateDir, 'index.tsx');
-    } else if (config.renderer === 'mjml') {
+    } else if (rendererType === 'mjml') {
       templatePath = path.join(templateDir, 'index.mjml');
     } else {
+      // Default to HTML if no renderer is specified
       templatePath = path.join(templateDir, 'index.html');
     }
 

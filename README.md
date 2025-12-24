@@ -197,7 +197,7 @@ requestValidation:
 
 #### Environment Variable Substitution
 
-Use `${VAR_NAME}` or `${VAR_NAME:-default}` syntax in your YAML config:
+Use `${VAR_NAME}` or `${VAR_NAME:-default}` syntax in your YAML config files (both `config.yaml` and `template.yaml`):
 
 ```yaml
 auth:
@@ -207,10 +207,11 @@ auth:
 
 **Important Notes:**
 
-- **All environment variables are optional** - You only need to set the variables that you reference in your `config.yaml`
+- **All environment variables are optional** - You only need to set the variables that you reference in your `config.yaml` or `template.yaml` files
 - **Variable names are user-defined** - You can use any variable names you want in your config (e.g., `${MY_API_KEY}`, `${EMAIL_USER}`, etc.)
 - **Only two environment variables have fixed names**: `CONFIG_PATH` and `TEMPLATES_DIR` (see [Environment Variables](#environment-variables) section)
-- All other environment variable names are determined by what you write in your `config.yaml` file
+- All other environment variable names are determined by what you write in your `config.yaml` or `template.yaml` files
+- **Environment variable substitution works in both `config.yaml` and `template.yaml` files** - Use the same `${VAR_NAME}` syntax in both
 
 ### Account Types
 
@@ -274,7 +275,7 @@ Templates are organized in directories under `/templates/`. Each template direct
 id: welcome
 renderer: react-email
 account: primary # Optional: default account for this template
-from: noreply@example.com # Optional: default 'from' address for this template
+from: ${TEMPLATE_FROM_EMAIL} # Optional: default 'from' address (supports env vars)
 schema:
   type: object
   required:
@@ -294,6 +295,26 @@ schema:
 - `account` (optional): Default account to use for this template. Falls back to global default.
 - `from` (optional): Default 'from' email address for this template. Falls back to `account.from` if not provided.
 - `schema` (required): JSON Schema for payload validation
+
+**Environment Variable Substitution:**
+
+Template YAML files support environment variable substitution using the same syntax as `config.yaml`:
+
+- `${VAR_NAME}` - Required variable (will error if not set)
+- `${VAR_NAME:-default}` - Optional variable with default value
+
+**Example:**
+
+```yaml
+id: welcome
+renderer: react-email
+account: ${TEMPLATE_ACCOUNT:-primary}
+from: ${TEMPLATE_FROM_EMAIL:-noreply@example.com}
+schema:
+  # ...
+```
+
+**Note**: All environment variables are optional. You only need to set the variables that you reference in your `template.yaml` files. Variable names are user-defined - use whatever names you prefer in your templates.
 
 ### React Email Template (`index.tsx`)
 
