@@ -1,5 +1,5 @@
 id: pg-magic-login-link
-from: ${FROM_EMAIL:-noreply@example.com}
+from: ${FROM_EMAIL:-noreply@blockqueue.dev}
 schema:
   type: object
   required:

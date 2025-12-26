@@ -12,16 +12,18 @@ RUN npm i --global turbo@2.7.0
 RUN turbo prune mailer --docker
 
 
-# Install dependencies stage
-FROM base AS installer
+# Build stage
+FROM base AS builder
 
 WORKDIR /app
 
-## Copy pruned package files
+# Copy pruned package files
 COPY --from=prune /app/out/full/ .
 COPY --from=prune /app/out/json/package-lock.json .
 
 RUN npm install
+
+# Bundle the application with esbuild
 RUN npm run build -- --filter=mailer
 
 
@@ -35,12 +37,11 @@ RUN adduser --system --uid 1001 hono
 # Set NODE_PATH so that dynamically imported templates can resolve modules
 # from the app's node_modules directory
 ENV NODE_PATH=/app/node_modules
-
-COPY --from=installer --chown=hono:nodejs /app/apps/mailer/dist ./dist
-COPY --from=installer --chown=hono:nodejs /app/apps/mailer/package.json ./package.json
-
-RUN npm install --omit=dev
+ENV NODE_ENV=production
+# Copy the bundled application
+COPY --from=builder --chown=hono:nodejs /app/apps/mailer/dist ./dist
+RUN npm install mjml tsx @react-email/components@0
 
 USER hono
 
-CMD ["npm", "run", "start"]
+CMD ["node", "--import", "tsx", "dist/index.js"]

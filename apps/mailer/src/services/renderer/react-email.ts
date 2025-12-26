@@ -5,7 +5,7 @@ import type { Renderer } from './index';
 
 type EmailComponent = (props: Record<string, unknown>) => ReactElement;
 interface EmailModule {
-  default: EmailComponent;
+  default: { default: EmailComponent } | EmailComponent;
 }
 
 export class ReactEmailRenderer implements Renderer {
@@ -17,13 +17,18 @@ export class ReactEmailRenderer implements Renderer {
     const absolutePath = resolveTemplatePath(templatePath);
 
     const module = (await import(absolutePath)) as EmailModule;
-    if (typeof module.default !== 'function') {
-      throw new Error(
-        `'Email' component not exported from template ${templatePath}`,
-      );
+
+    // Handle nested default export structure from tsx/CJS interop
+    const EmailComponent =
+      typeof module.default === 'object' && 'default' in module.default
+        ? module.default.default
+        : module.default;
+
+    if (typeof EmailComponent !== 'function') {
+      throw new Error(`Template ${templatePath} has no default export`);
     }
 
-    const emailElement = module.default(payload);
+    const emailElement = EmailComponent(payload);
     const html = await render(emailElement);
 
     return html;

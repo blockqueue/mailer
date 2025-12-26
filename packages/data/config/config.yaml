@@ -1,6 +1,7 @@
 auth:
   type: hmac
-  header: x-mailer-signature
+  # header: x-mailer-signature
+  header: X-BlockQueue-Mail-Service-Signature
   secret: ${MAILER_SIGNING_SECRET}
   tolerance: 300 # 5 minutes in seconds
 
