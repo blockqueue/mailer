@@ -10,7 +10,7 @@
     {
       "files": ["packages/data/templates/**/*.tsx"],
       "options": {
-        "plugins": []
+        "organizeImportsSkipDestructiveCodeActions": true
       }
     }
   ]

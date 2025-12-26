@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Body,
   Button,
@@ -12,6 +11,7 @@ import {
   Section,
   Text,
 } from '@react-email/components';
+import React from 'react';
 import { CompanyFooter } from '../_components/CompanyFooter';
 import { SocialLinks } from '../_components/SocialLinks';
 import { TailwindWrapper } from '../_components/TailwindWrapper';

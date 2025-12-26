@@ -1,5 +1,5 @@
-import React from 'react';
 import { Img, Link } from '@react-email/components';
+import React from 'react';
 import * as config from '../_utility/config';
 
 type SocialLinksProps = {

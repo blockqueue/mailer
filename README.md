@@ -318,7 +318,10 @@ schema:
 
 ### React Email Template (`index.tsx`)
 
+**Important**: React Email templates **must** explicitly import React, even though it may appear unused. This is required because the JSX transform doesn't work correctly with dynamic imports at runtime. The React import ensures templates can be dynamically loaded and rendered correctly.
+
 ```tsx
+import React from 'react';
 import { Html, Head, Body, Container, Text } from '@react-email/components';
 
 export default function WelcomeEmail({
