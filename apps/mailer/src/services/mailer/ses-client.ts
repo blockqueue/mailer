@@ -1,6 +1,6 @@
 import type { SendEmailCommandOutput } from '@aws-sdk/client-ses';
 import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses';
-import MailComposer from 'nodemailer/lib/mail-composer';
+import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 import type { SesAccountConfig } from '../../types/config';
 import type { EmailOptions, SendResult } from './base-client';
 import { EmailClient } from './base-client';
