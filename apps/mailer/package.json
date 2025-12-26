@@ -1,17 +1,19 @@
 {
   "name": "mailer",
   "scripts": {
-    "dev": "NODE_ENV=development bun run --hot src/index.ts",
-    "start": "NODE_ENV=production bun run dist/index.js",
-    "lint": "eslint . --ext .ts,.tsx",
-    "build": "NODE_ENV=production bun build src/index.ts --outdir ./dist --target bun --external react-dom/server --external mjml"
+    "dev": "NODE_ENV=development tsx watch src/index.ts",
+    "build": "NODE_ENV=production tsc",
+    "start": "NODE_ENV=production node --import tsx dist/index.js",
+    "lint": "eslint . --ext .ts,.tsx"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.700.0",
+    "@hono/node-server": "^1.19.6",
     "@react-email/components": "^0.5.7",
     "@react-email/render": "^1.4.0",
     "axios": "^1.13.2",
-    "hono": "^4.11.1",
+    "dotenv": "^16.0.3",
+    "hono": "^4.11.2",
     "ipaddr.js": "^2.3.0",
     "js-yaml": "^4.1.1",
     "mjml": "^4.18.0",
@@ -19,6 +21,7 @@
     "pino": "^10.1.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "tsx": "^4.7.1",
     "zod": "^4.2.1"
   },
   "devDependencies": {
@@ -30,5 +33,8 @@
     "@types/react-dom": "^19.2.2",
     "eslint": "^9.39.1",
     "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

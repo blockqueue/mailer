@@ -1,3 +1,4 @@
+import React from 'react';
 import { Img, Link } from '@react-email/components';
 import * as config from '../_utility/config';
 

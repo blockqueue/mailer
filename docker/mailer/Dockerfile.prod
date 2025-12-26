@@ -1,18 +1,10 @@
-# Base stage
-FROM oven/bun:1-slim AS base
-
-# Install Node.js 20+ (required by package.json) and npm
-# bun:1-slim comes with Node.js 18, but we need Node.js 20+
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates curl && \
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y --no-install-recommends nodejs && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+FROM node:24-alpine AS base
 
 
-# Prune stage - Use Turborepo to get only what we need
+# Prune stage
 FROM base AS prune
+
+RUN apk add --no-cache gcompat
 
 WORKDIR /app
 COPY . .
@@ -33,24 +25,22 @@ RUN npm install
 RUN npm run build -- --filter=mailer
 
 
-# Runner stage - Final lightweight image
-FROM oven/bun:1-slim AS runner
-
-ENV NODE_OPTIONS=--dns-result-order=ipv4first
-ENV NODE_ENV=production
-
+# Runner stage
+FROM base AS runner
 WORKDIR /app
 
-## Create non-root user for security
-RUN groupadd --system --gid 1001 bunuser && \
-    useradd --system --uid 1001 --gid bunuser bunuser && \
-    chown -R bunuser:bunuser /app
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 hono
 
-COPY --from=installer --chown=bunuser:bunuser /app/apps/mailer/dist ./apps/mailer/dist
-RUN cd /app/apps/mailer && bun install react-dom mjml
+# Set NODE_PATH so that dynamically imported templates can resolve modules
+# from the app's node_modules directory
+ENV NODE_PATH=/app/node_modules
 
-## Switch to non-root user
-USER bunuser
+COPY --from=installer --chown=hono:nodejs /app/apps/mailer/dist ./dist
+COPY --from=installer --chown=hono:nodejs /app/apps/mailer/package.json ./package.json
 
-## Run the bundled application
-CMD ["bun", "run", "apps/mailer/dist/index.js"]
+RUN npm install --omit=dev
+
+USER hono
+
+CMD ["npm", "run", "start"]

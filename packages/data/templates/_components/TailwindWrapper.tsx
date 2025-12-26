@@ -1,3 +1,4 @@
+import React from 'react';
 import { Tailwind } from '@react-email/components';
 
 type TailwindWrapperProps = { children: React.ReactNode };

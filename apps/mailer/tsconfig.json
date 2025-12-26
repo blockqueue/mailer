@@ -1,13 +1,15 @@
 {
   "compilerOptions": {
     "strict": true,
+    "skipLibCheck": true,
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "module": "ESNext",
     "target": "ESNext",
     "moduleResolution": "bundler",
     "declaration": false,
-    "sourceMap": false
+    "sourceMap": false,
+    "outDir": "./dist"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
