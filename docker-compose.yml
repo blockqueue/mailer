@@ -1,17 +1,4 @@
 services:
-  bq-mailer-dev:
-    build:
-      context: .
-      dockerfile: ./docker/mailer/Dockerfile
-    ports:
-      - '3000:3000'
-    volumes:
-      - ./node_modules:/app/node_modules
-      - ./apps/mailer:/app/apps/mailer
-      - ./packages/data:/app/packages/data
-    env_file:
-      - apps/mailer/.env
-
   # for building a local prod version
   bq-mailer-build:
     build:

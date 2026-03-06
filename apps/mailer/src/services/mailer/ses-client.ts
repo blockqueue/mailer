@@ -1,5 +1,6 @@
 import type { SendEmailCommandOutput } from '@aws-sdk/client-ses';
 import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses';
+import { addProxyToClient } from 'aws-sdk-v3-proxy';
 import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 import type { SesAccountConfig } from '../../types/config';
 import type { EmailOptions, SendResult } from './base-client';
@@ -14,13 +15,15 @@ export class SesEmailClient extends EmailClient<SesAccountConfig> {
   constructor(config: SesAccountConfig) {
     super(config);
 
-    this.client = new SESClient({
+    const client = new SESClient({
       region: config.region,
       credentials: {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
       },
     });
+
+    this.client = addProxyToClient(client, { throwOnNoProxy: false });
   }
 
   private toArray(value: string | string[] | undefined): string[] | undefined {
