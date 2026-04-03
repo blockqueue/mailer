@@ -18,9 +18,17 @@ export interface SendRequest {
 }
 
 /**
- * Response from POST /send endpoint
+ * Response from POST /send endpoint.
+ * Matches the shape expected by consumers (e.g. BlockQueue mail client).
  */
-export interface SendResponse {
-  messageId: string;
-  success: boolean;
-}
+export type SendResponse =
+  | {
+      success: true;
+      messageId: string;
+    }
+  | {
+      success: false;
+      message: string;
+      /** Optional extra context (e.g. validation errors) */
+      details?: unknown;
+    };

@@ -20,18 +20,30 @@ export async function sendEmailController(
   try {
     // Validate required fields
     if (!body.templateId) {
-      return c.json({ error: 'Missing required field: templateId' }, 400);
+      return c.json(
+        { success: false, message: 'Missing required field: templateId' },
+        400,
+      );
     }
 
     // Payload is required
     if (typeof body.payload !== 'object') {
-      return c.json({ error: 'Missing required field: payload' }, 400);
+      return c.json(
+        { success: false, message: 'Missing required field: payload' },
+        400,
+      );
     }
 
     // Load template
     const template = templateLoader.getTemplate(body.templateId);
     if (!template) {
-      return c.json({ error: `Template not found: ${body.templateId}` }, 404);
+      return c.json(
+        {
+          success: false,
+          message: `Template not found: ${body.templateId}`,
+        },
+        404,
+      );
     }
 
     // Validate payload against template schema
@@ -39,7 +51,8 @@ export async function sendEmailController(
     if (!validation.valid) {
       return c.json(
         {
-          error: 'Payload validation failed',
+          success: false,
+          message: 'Payload validation failed',
           details: validation.errors,
         },
         400,
@@ -51,7 +64,11 @@ export async function sendEmailController(
       body.account ?? template.account ?? config.defaults?.account;
     if (!accountId) {
       return c.json(
-        { error: 'No account specified and no default account configured' },
+        {
+          success: false,
+          message:
+            'No account specified and no default account configured',
+        },
         400,
       );
     }
@@ -60,13 +77,19 @@ export async function sendEmailController(
     // Runtime check (YAML parsing might not match types)
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!accountConfig) {
-      return c.json({ error: `Account not found: ${accountId}` }, 400);
+      return c.json(
+        { success: false, message: `Account not found: ${accountId}` },
+        400,
+      );
     }
 
     // Resolve renderer (template > global default)
     const rendererType = template.renderer ?? config.defaults?.renderer;
     if (!rendererType) {
-      return c.json({ error: 'No renderer specified' }, 400);
+      return c.json(
+        { success: false, message: 'No renderer specified' },
+        400,
+      );
     }
     const renderer = getRenderer(rendererType);
 
@@ -83,8 +106,8 @@ export async function sendEmailController(
     await client.close();
 
     const response: SendResponse = {
+      success: true,
       messageId: result.messageId,
-      success: result.success,
     };
 
     return c.json(response);
@@ -101,7 +124,7 @@ export async function sendEmailController(
     );
     return c.json(
       {
-        error: 'Internal server error',
+        success: false,
         message: errorMessage,
       },
       500,

@@ -81,7 +81,10 @@ app.post('/send', authMiddleware(config), async (c) => {
   // Body is already parsed by request validation middleware
   const body = getParsedBody(c);
   if (!body) {
-    return c.json({ error: 'Request body not available' }, 500);
+    return c.json(
+      { success: false, message: 'Request body not available' },
+      500,
+    );
   }
   return sendEmailController(c, body, config, templateLoader);
 });
