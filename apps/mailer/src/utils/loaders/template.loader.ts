@@ -4,7 +4,8 @@ import type { TemplateConfig } from '../../types/template';
 import { logger } from '../logger';
 import { loadYamlWithEnv } from './yaml.loader';
 
-const TEMPLATES_DIR = process.env.TEMPLATES_DIR ?? '/templates';
+/** Baked images use /app/templates so ESM imports resolve via /app/node_modules */
+const TEMPLATES_DIR = process.env.TEMPLATES_DIR ?? '/app/templates';
 const IS_DEV = process.env.NODE_ENV === 'development';
 
 export class TemplateLoader {
@@ -26,7 +27,7 @@ export class TemplateLoader {
     if (!fs.existsSync(TEMPLATES_DIR)) {
       logger.warn(
         { templatesDir: TEMPLATES_DIR },
-        "Templates directory not found. Make sure it's mounted as a volume.",
+        'Templates directory not found. For production, bake compiled templates into the image (see examples/mail-service). For local API dev, set TEMPLATES_DIR to your emails/ folder.',
       );
       return { successCount: 0, failureCount: 0, failures: [] };
     }
@@ -136,28 +137,27 @@ export class TemplateLoader {
   }
 
   /**
-   * Resolve template entry: prod expects index.mjs / index.html;
-   * NODE_ENV=development may fall back to index.tsx / index.mjml.
+   * Production (Distroless): compiled index.mjs / index.html only — no TS loader in the image.
+   * Local `npm run dev` (NODE_ENV=development + tsx): prefer source index.tsx / index.mjml.
    */
   private resolveTemplateFile(
     templateDir: string,
     rendererType: 'react-email' | 'mjml' | 'html' | undefined,
   ): string {
     if (rendererType === 'react-email') {
-      const compiled = path.join(templateDir, 'index.mjs');
-      if (fs.existsSync(compiled)) {
-        return compiled;
-      }
       const source = path.join(templateDir, 'index.tsx');
+      const compiled = path.join(templateDir, 'index.mjs');
+
       if (IS_DEV && fs.existsSync(source)) {
         return source;
       }
+      if (fs.existsSync(compiled)) {
+        return compiled;
+      }
       throw new Error(
         `React Email template not found in ${templateDir}. ` +
-          'Expected index.mjs (run compile-templates). ' +
-          (IS_DEV
-            ? 'Development fallback index.tsx was also missing.'
-            : 'Source index.tsx is only loaded when NODE_ENV=development.'),
+          'Production expects index.mjs (compile in your consumer Dockerfile; see examples/mail-service). ' +
+          'Local API development uses index.tsx via `npm run dev` (tsx) when NODE_ENV=development.',
       );
     }
 
@@ -166,7 +166,10 @@ export class TemplateLoader {
       if (fs.existsSync(source)) {
         return source;
       }
-      throw new Error(`Template file not found: ${source}`);
+      throw new Error(
+        `Template file not found: ${source}. ` +
+          'For production, compile MJML to HTML with compile-templates (renderer becomes html).',
+      );
     }
 
     const htmlPath = path.join(templateDir, 'index.html');

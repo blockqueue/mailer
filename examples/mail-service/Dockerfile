@@ -3,9 +3,7 @@
 
 ARG MAILER_IMAGE=ghcr.io/blockqueue/mailer:latest
 
-
 FROM ${MAILER_IMAGE} AS mailer
-
 
 FROM node:24-alpine AS compile
 WORKDIR /work
@@ -18,10 +16,8 @@ RUN npm init -y \
     react@19.2.3 \
     react-dom@19.2.3
 COPY ./emails /templates-src
-RUN node ./compile-templates.mjs /templates-src /templates \
-  && ln -sfn /app/node_modules /templates/node_modules
-
+RUN node ./compile-templates.mjs /templates-src /app/templates
 
 FROM ${MAILER_IMAGE}
-COPY --from=compile /templates /templates
+COPY --from=compile /app/templates /app/templates
 COPY ./config/config.yaml /config/config.yaml

@@ -10,7 +10,7 @@ const CONFIG_PATH = process.env.CONFIG_PATH ?? '/config/config.yaml';
 export function loadConfig(): GlobalConfig {
   if (!fs.existsSync(CONFIG_PATH)) {
     throw new Error(
-      `Config file not found at ${CONFIG_PATH}. Make sure it's mounted as a volume.`,
+      `Config file not found at ${CONFIG_PATH}. Bake config into the image (see examples/mail-service) or set CONFIG_PATH for local development.`,
     );
   }
 

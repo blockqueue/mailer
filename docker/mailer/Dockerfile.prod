@@ -24,21 +24,19 @@ RUN npm install
 RUN npm run build -- --filter=mailer
 
 
-# Alpine has npm; final distroless image does not
-FROM base AS runtime-deps
+# Install runtime peers on Debian (matches Distroless glibc; avoid Alpine/musl native mismatches)
+FROM node:24-bookworm-slim AS runtime-deps
 
 WORKDIR /app
 
 COPY docker/mailer/package.runtime.json ./package.json
 COPY --from=builder /app/apps/mailer/dist ./dist
 
-# Install render peers only
 RUN npm install --omit=dev \
   && npm cache clean --force \
   && rm -rf /root/.npm /tmp/* \
-  && mkdir -p /templates \
-  && ln -sfn /app/node_modules /templates/node_modules \
-  && chown -R 65532:65532 /app /templates
+  && mkdir -p /app/templates \
+  && chown -R 65532:65532 /app
 
 
 # Distroless: entrypoint is /nodejs/bin/node (no shell/npm)
@@ -47,8 +45,9 @@ FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+# Default; consumer images bake compiled templates here
+ENV TEMPLATES_DIR=/app/templates
 
 COPY --from=runtime-deps --chown=65532:65532 /app /app
-COPY --from=runtime-deps --chown=65532:65532 /templates /templates
 
 CMD ["dist/index.cjs"]

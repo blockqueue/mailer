@@ -110,7 +110,7 @@ For a production-like Docker run with compiled templates, see [examples/mail-ser
 
 ## Shipping your own templates
 
-**Canonical guide:** [examples/mail-service](examples/mail-service) — mirrors a real production consumer layout.
+**Canonical guide:** [examples/mail-service](examples/mail-service) — bake your templates into a consumer image. Volume-mounting templates into Distroless is not supported.
 
 Authors keep editable source under `emails/` (`.tsx` / `.mjml` / `.html`) and preview with React Email. When ready to ship, the consumer Dockerfile compiles templates into the slim mailer image:
 
@@ -123,21 +123,30 @@ WORKDIR /work
 COPY --from=mailer /app/dist/compile-templates.mjs ./compile-templates.mjs
 RUN npm init -y && npm install esbuild mjml @react-email/components react react-dom
 COPY ./emails /templates-src
-RUN node ./compile-templates.mjs /templates-src /templates \
-  && ln -sfn /app/node_modules /templates/node_modules
+RUN node ./compile-templates.mjs /templates-src /app/templates
 
 FROM ${MAILER_IMAGE}
-COPY --from=compile /templates /templates
+COPY --from=compile /app/templates /app/templates
 COPY ./config/config.yaml /config/config.yaml
 ```
 
-| Source                    | Compiled artifact                  |
-| ------------------------- | ---------------------------------- |
-| `index.tsx` (React Email) | `index.mjs` (components inlined)   |
-| `index.mjml`              | `index.html` (`renderer` → `html`) |
-| `index.html`              | copied as-is                       |
+Templates land under **`/app/templates`** so Node resolves `react` / `@react-email/render` from `/app/node_modules` without a symlink.
 
-Local API development (`npm run dev` in `apps/mailer`) still loads source `.tsx` / `.mjml` when `NODE_ENV=development`. Production expects precompiled artifacts.
+| Source                    | Compiled artifact                                      |
+| ------------------------- | ------------------------------------------------------ |
+| `index.tsx` (React Email) | `index.mjs` + `renderer: react-email` in template.yaml |
+| `index.mjml`              | `index.html` + `renderer: html`                        |
+| `index.html`              | copied as-is + `renderer: html`                        |
+
+### Development vs production templates
+
+| Environment          | How you run                                                       | What loads                                                              |
+| -------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Local API**        | `npm run dev` in `apps/mailer` (`NODE_ENV=development` + **tsx**) | Source `index.tsx` / `index.mjml` (set `TEMPLATES_DIR` / `CONFIG_PATH`) |
+| **Template preview** | `npm run dev` in your consumer (`email dev`)                      | React Email preview only — not the mailer API                           |
+| **Production image** | Distroless final stage                                            | **Compiled** `index.mjs` / `index.html` only                            |
+
+The Distroless runtime does **not** include `tsx`, `mjml`, or `@react-email/components`. Do not set `NODE_ENV=development` on the baked image expecting raw `.tsx` to work — compile at image build time instead. Distroless is for the **final** image only; compilation uses a normal Node stage.
 
 ## Configuration
 
@@ -248,10 +257,13 @@ accounts:
 
 ## Templates
 
-Templates are organized in directories under `/templates/`. Each template directory contains:
+**Source** (authoring): directories under your consumer `emails/` folder.
+**Runtime** (baked image): compiled artifacts under `/app/templates/` (default `TEMPLATES_DIR`).
+
+Each template directory contains:
 
 1. `template.yaml` - Template metadata and schema
-2. Template file - `index.tsx` (React Email), `index.mjml` (MJML), or `index.html` (HTML)
+2. Template file — source: `index.tsx` / `index.mjml` / `index.html`; production: `index.mjs` and/or `index.html`
 
 **Note**: Folders starting with underscore (e.g., `_components`, `_utils`) are ignored by the template loader. This is useful for component-based renderers like React Email that may need shared components or utilities. These folders won't be treated as templates.
 
@@ -304,7 +316,7 @@ schema:
 
 ### React Email Template (`index.tsx`)
 
-Production images compile `.tsx` with the automatic JSX runtime, so an explicit `import React` is optional (still fine if present). For local `NODE_ENV=development` loading of source `.tsx` without compiling, keep `import React from 'react'`.
+Production compile uses the automatic JSX runtime (`index.mjs`). Local `npm run dev` loads source `.tsx` via tsx when `NODE_ENV=development`.
 
 ```tsx
 import { Html, Head, Body, Container, Text } from '@react-email/components';
@@ -776,9 +788,9 @@ apps/mailer/
 **All environment variables are optional**, and you can name them whatever you want based on your `config.yaml` file. The only exceptions are:
 
 - `CONFIG_PATH` - Path to config file (default: `/config/config.yaml`)
-- `TEMPLATES_DIR` - Path to templates directory (default: `/templates`)
+- `TEMPLATES_DIR` - Path to templates directory (default: `/app/templates`)
 
-**Note**: Most users using Docker will never need to set `CONFIG_PATH` or `TEMPLATES_DIR` because they can simply mount their config and template directories to the default paths (`/config` and `/templates`) in the Docker container. These environment variables are primarily useful for local development or custom Docker setups where you mount volumes to different paths.
+**Note**: Baked consumer images use the defaults (`/config/config.yaml` and `/app/templates`). Override these only for local API development (e.g. point `TEMPLATES_DIR` at your `emails/` folder). Do not volume-mount templates into the Distroless runtime — bake a new image when templates change.
 
 **All other environment variables** are user-defined based on what you reference in your `config.yaml` using the `${VAR_NAME}` syntax. For example, if your config uses `${MY_CUSTOM_API_KEY}`, then you would set the `MY_CUSTOM_API_KEY` environment variable.
 
@@ -810,19 +822,17 @@ bun run lint
 docker build -t blockqueue/mailer:latest -f docker/mailer/Dockerfile.prod .
 ```
 
-The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.mjs`, and only `react` / `react-dom` / `@react-email/render`. It does **not** include `tsx`, `mjml`, or `@react-email/components`.
+The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.mjs`, and only the peers pinned in [`docker/mailer/package.runtime.json`](docker/mailer/package.runtime.json) (`react` / `react-dom` / `@react-email/render`). Runtime deps are installed on Debian (glibc) before copying into Distroless. It does **not** include `tsx`, `mjml`, or `@react-email/components`.
 
 (Chainguard’s public `node` image was evaluated; Distroless was smaller.)
 
-### Shipping templates (recommended)
+### Shipping templates
 
-Prefer baking compiled templates into a consumer image — see [examples/mail-service](examples/mail-service):
+Bake compiled templates into a consumer image — see [examples/mail-service](examples/mail-service):
 
 ```bash
 docker compose build bq-mailer-build
 docker compose up bq-example-mail-service
 ```
 
-### Running with precompiled template volumes
-
-If you mount `/templates` yourself, mount **compiled** output (`index.mjs` / `index.html`), and include the ESM resolve symlink (`ln -sfn /app/node_modules /templates/node_modules` in an image with a shell). Prefer the [examples/mail-service](examples/mail-service) Dockerfile, which does this for you.
+Template changes require a new image build. Volume mounts are not supported for Distroless.
