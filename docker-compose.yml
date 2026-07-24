@@ -1,18 +1,30 @@
 services:
-  # for building a local prod version
+  # Slim mailer runtime image
   bq-mailer-build:
     build:
       context: .
       dockerfile: ./docker/mailer/Dockerfile.prod
     image: blockqueue/mailer:latest
 
-  bq-mailer-test:
-    image: blockqueue/mailer:latest # for testing the locally built image
-    # image: ghcr.io/blockqueue/mailer:v0.0.1 # for testing the remote image build
+  # Production-like consumer: compiles examples/mail-service templates into the slim runtime
+  # Usage: docker compose build bq-mailer-build && docker compose up bq-example-mail-service
+  bq-example-mail-service:
+    build:
+      context: ./examples/mail-service
+      dockerfile: Dockerfile
+      args:
+        MAILER_IMAGE: blockqueue/mailer:latest
+    image: blockqueue/example-mail-service:latest
     ports:
       - '3000:3000'
-    volumes:
-      - ./packages/data/config:/config
-      - ./packages/data/templates:/templates
-    env_file:
-      - apps/mailer/.env.test
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+
+      # user defined variables based on config.yaml
+      - MAILER_SIGNING_SECRET=wefeqfdwfwrfqfweq9343rrwfeafeqr42r432ef
+      - MAIL_FROM_EMAIL=noreply@example.com
+      - ZEPTOMAIL_API_KEY=your-api-key
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=your-access-key-id
+      - AWS_SECRET_ACCESS_KEY=your-secret-access-key

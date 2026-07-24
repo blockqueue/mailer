@@ -1,0 +1,33 @@
+auth:
+  type: hmac
+  header: x-mailer-signature
+  secret: ${MAILER_SIGNING_SECRET}
+  tolerance: 300 # 5 minutes in seconds
+
+# ipAllowlist:
+#   enabled: true
+#   allowedIps:
+#     - 192.168.1.0/24
+#     - 10.0.0.1
+
+# Optional: Request validation settings
+# requestValidation:
+#   maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
+
+accounts:
+  zeptomail:
+    type: zeptomail
+    from: ${MAIL_FROM_EMAIL}
+    apiKey: ${ZEPTOMAIL_API_KEY}
+    # bounceAddress: ${ZEPTOMAIL_BOUNCE_ADDRESS}  # Optional
+
+  ses:
+    type: ses
+    from: ${MAIL_FROM_EMAIL}
+    region: ${AWS_REGION} # e.g., us-east-1
+    accessKeyId: ${AWS_ACCESS_KEY_ID}
+    secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
+
+defaults:
+  account: zeptomail
+  renderer: react-email

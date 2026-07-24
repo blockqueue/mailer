@@ -5,6 +5,7 @@ import { logger } from '../logger';
 import { loadYamlWithEnv } from './yaml.loader';
 
 const TEMPLATES_DIR = process.env.TEMPLATES_DIR ?? '/templates';
+const IS_DEV = process.env.NODE_ENV === 'development';
 
 export class TemplateLoader {
   private templates = new Map<
@@ -137,27 +138,55 @@ export class TemplateLoader {
       );
     }
 
-    // Determine template file path based on renderer
-    // Use the resolved renderer type (template renderer or default)
-    let templatePath: string;
-    if (rendererType === 'react-email') {
-      templatePath = path.join(templateDir, 'index.tsx');
-    } else if (rendererType === 'mjml') {
-      templatePath = path.join(templateDir, 'index.mjml');
-    } else {
-      // Default to HTML if no renderer is specified
-      templatePath = path.join(templateDir, 'index.html');
-    }
-
-    // Verify template file exists
-    if (!fs.existsSync(templatePath)) {
-      throw new Error(`Template file not found: ${templatePath}`);
-    }
+    const templatePath = this.resolveTemplateFile(templateDir, rendererType);
 
     return {
       ...config,
       templatePath,
     };
+  }
+
+  /**
+   * Resolve the template entry file for a renderer.
+   * Production expects precompiled artifacts (index.mjs / index.html).
+   * Development may fall back to source index.tsx / index.mjml.
+   */
+  private resolveTemplateFile(
+    templateDir: string,
+    rendererType: 'react-email' | 'mjml' | 'html' | undefined,
+  ): string {
+    if (rendererType === 'react-email') {
+      const compiled = path.join(templateDir, 'index.mjs');
+      if (fs.existsSync(compiled)) {
+        return compiled;
+      }
+      const source = path.join(templateDir, 'index.tsx');
+      if (IS_DEV && fs.existsSync(source)) {
+        return source;
+      }
+      throw new Error(
+        `React Email template not found in ${templateDir}. ` +
+          'Expected index.mjs (run compile-templates). ' +
+          (IS_DEV
+            ? 'Development fallback index.tsx was also missing.'
+            : 'Source index.tsx is only loaded when NODE_ENV=development.'),
+      );
+    }
+
+    if (rendererType === 'mjml') {
+      const source = path.join(templateDir, 'index.mjml');
+      if (fs.existsSync(source)) {
+        return source;
+      }
+      throw new Error(`Template file not found: ${source}`);
+    }
+
+    // html (default)
+    const htmlPath = path.join(templateDir, 'index.html');
+    if (fs.existsSync(htmlPath)) {
+      return htmlPath;
+    }
+    throw new Error(`Template file not found: ${htmlPath}`);
   }
 
   /**

@@ -31,11 +31,12 @@ This is infrastructure software, not a standalone product. We focus on making it
 - **Email Validation**: Automatic validation of all email addresses (from, to, cc, bcc, replyTo)
 - **Authentication**: API key or HMAC request signing authentication
 - **Security Features**: Optional IP allowlisting, rate limiting, HTTPS enforcement
-- **Docker Ready**: Single container image with volume mounts for config and templates
+- **Docker Ready**: Slim runtime image; compile templates in your consumer Dockerfile (see [examples/mail-service](examples/mail-service))
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [Shipping your own templates](#shipping-your-own-templates)
 - [Configuration](#configuration)
 - [Templates](#templates)
 - [API Reference](#api-reference)
@@ -109,6 +110,37 @@ bun run dev
 ```
 
 The server will start on port 3000 (or the port specified by `PORT` environment variable).
+
+## Shipping your own templates
+
+**Canonical guide:** [examples/mail-service](examples/mail-service) — mirrors a real production consumer layout.
+
+Authors keep editable source under `emails/` (`.tsx` / `.mjml` / `.html`) and preview with React Email. When ready to ship, the consumer Dockerfile compiles templates into the slim mailer image:
+
+```dockerfile
+ARG MAILER_IMAGE=ghcr.io/blockqueue/mailer:latest
+FROM ${MAILER_IMAGE} AS mailer
+
+FROM node:24-alpine AS compile
+WORKDIR /work
+COPY --from=mailer /app/dist/compile-templates.mjs ./compile-templates.mjs
+RUN npm init -y && npm install esbuild mjml @react-email/components react react-dom
+COPY ./emails /templates-src
+RUN node ./compile-templates.mjs /templates-src /templates \
+  && ln -sfn /app/node_modules /templates/node_modules
+
+FROM ${MAILER_IMAGE}
+COPY --from=compile /templates /templates
+COPY ./config/config.yaml /config/config.yaml
+```
+
+| Source | Compiled artifact |
+|--------|-------------------|
+| `index.tsx` (React Email) | `index.mjs` (components inlined) |
+| `index.mjml` | `index.html` (`renderer` → `html`) |
+| `index.html` | copied as-is |
+
+Local API development (`npm run dev` in `apps/mailer`) still loads source `.tsx` / `.mjml` when `NODE_ENV=development`. Production expects precompiled artifacts.
 
 ## Configuration
 
@@ -318,10 +350,9 @@ schema:
 
 ### React Email Template (`index.tsx`)
 
-**Important**: React Email templates **must** explicitly import React, even though it may appear unused. This is required because the JSX transform doesn't work correctly with dynamic imports at runtime. The React import ensures templates can be dynamically loaded and rendered correctly.
+Production images compile `.tsx` with the automatic JSX runtime, so an explicit `import React` is optional (still fine if present). For local `NODE_ENV=development` loading of source `.tsx` without compiling, keep `import React from 'react'`.
 
 ```tsx
-import React from 'react';
 import { Html, Head, Body, Container, Text } from '@react-email/components';
 
 export default function WelcomeEmail({
@@ -344,6 +375,8 @@ export default function WelcomeEmail({
   );
 }
 ```
+
+See [examples/mail-service](examples/mail-service) for the full author → preview → Docker compile workflow.
 
 ### MJML Template (`index.mjml`)
 
@@ -869,23 +902,34 @@ bun run lint
 
 ## Docker
 
-### Building
+### Building the slim mailer runtime
 
 ```bash
-docker build -t mailer -f docker/mailer/Dockerfile .
+docker build -t blockqueue/mailer:latest -f docker/mailer/Dockerfile.prod .
 ```
 
-### Running
+The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.mjs`, and only `react` / `react-dom` / `@react-email/render`. It does **not** include `tsx`, `mjml`, or `@react-email/components`.
+
+(Chainguard’s public `node` image was evaluated; Distroless was smaller.)
+
+
+### Shipping templates (recommended)
+
+Prefer baking compiled templates into a consumer image — see [examples/mail-service](examples/mail-service):
+
+```bash
+docker compose build bq-mailer-build
+docker compose up bq-example-mail-service
+```
+
+### Running with precompiled template volumes
+
+If you mount `/templates` yourself, mount **compiled** output (`index.mjs` / `index.html`), and recreate the ESM resolve symlink:
 
 ```bash
 docker run -p 3000:3000 \
   -v $(pwd)/data/config:/config \
-  -v $(pwd)/data/templates:/templates \
-  -e MAILER_API_KEY=your-key \
-  -e MAIL_FROM_EMAIL=noreply@example.com \
-  -e SMTP_USER=your-user \
-  -e SMTP_PASSWORD=your-password \
-  mailer
+  -v $(pwd)/data/templates-compiled:/templates \
+  blockqueue/mailer:latest
+# then inside the image (or in your Dockerfile): ln -sfn /app/node_modules /templates/node_modules
 ```
-
-**Note**: When mounting volumes to the default paths (`/config` and `/templates`) as shown above, you don't need to set the `CONFIG_PATH` or `TEMPLATES_DIR` environment variables. Only set these if you mount your volumes to different paths and need to override the defaults.

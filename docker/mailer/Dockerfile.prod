@@ -23,25 +23,36 @@ COPY --from=prune /app/out/json/package-lock.json .
 
 RUN npm install
 
-# Bundle the application with esbuild
+# Bundle the application (server + compile-templates CLI)
 RUN npm run build -- --filter=mailer
 
 
-# Runner stage
-FROM base AS runner
+# Runtime deps stage (Alpine has npm; final image will not)
+FROM base AS runtime-deps
+
 WORKDIR /app
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 hono
+COPY docker/mailer/package.runtime.json ./package.json
+COPY --from=builder /app/apps/mailer/dist ./dist
 
-# Set NODE_PATH so that dynamically imported templates can resolve modules
-# from the app's node_modules directory
-ENV NODE_PATH=/app/node_modules
+# Install only render peers.
+RUN npm install --omit=dev \
+  && npm cache clean --force \
+  && rm -rf /root/.npm /tmp/* \
+  && mkdir -p /templates \
+  && ln -sfn /app/node_modules /templates/node_modules \
+  && chown -R 65532:65532 /app /templates
+
+
+# Final stage — Google Distroless.
+# Entrypoint is already /nodejs/bin/node; no shell, npm, or yarn.
+FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runner
+
+WORKDIR /app
+
 ENV NODE_ENV=production
-# Copy the bundled application
-COPY --from=builder --chown=hono:nodejs /app/apps/mailer/dist ./dist
-RUN npm install mjml tsx @react-email/components@0
 
-USER hono
+COPY --from=runtime-deps --chown=65532:65532 /app /app
+COPY --from=runtime-deps --chown=65532:65532 /templates /templates
 
-CMD ["node", "--import", "tsx", "dist/index.js"]
+CMD ["dist/index.cjs"]
