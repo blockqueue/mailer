@@ -1,11 +1,32 @@
 import { render } from '@react-email/render';
+import { pathToFileURL } from 'node:url';
 import type { ReactElement } from 'react';
 import { resolveTemplatePath } from '../../utils/template/template-path';
 import type { Renderer } from './index';
 
 type EmailComponent = (props: Record<string, unknown>) => ReactElement;
 interface EmailModule {
-  default: { default: EmailComponent } | EmailComponent;
+  default?: EmailComponent | { default: EmailComponent };
+  Email?: EmailComponent;
+}
+
+function resolveEmailComponent(module: EmailModule): EmailComponent {
+  const exported = module.default ?? module.Email;
+
+  if (typeof exported === 'function') {
+    return exported;
+  }
+
+  if (
+    exported &&
+    typeof exported === 'object' &&
+    'default' in exported &&
+    typeof exported.default === 'function'
+  ) {
+    return exported.default;
+  }
+
+  throw new Error('Template module has no default (or Email) export');
 }
 
 export class ReactEmailRenderer implements Renderer {
@@ -13,24 +34,13 @@ export class ReactEmailRenderer implements Renderer {
     templatePath: string,
     payload: Record<string, unknown>,
   ): Promise<string> {
-    // Resolve and validate the template path
     const absolutePath = resolveTemplatePath(templatePath);
+    // file:// URL is required for ESM imports on absolute paths
+    const moduleUrl = pathToFileURL(absolutePath).href;
+    const module = (await import(moduleUrl)) as EmailModule;
 
-    const module = (await import(absolutePath)) as EmailModule;
-
-    // Handle nested default export structure from tsx/CJS interop
-    const EmailComponent =
-      typeof module.default === 'object' && 'default' in module.default
-        ? module.default.default
-        : module.default;
-
-    if (typeof EmailComponent !== 'function') {
-      throw new Error(`Template ${templatePath} has no default export`);
-    }
-
+    const EmailComponent = resolveEmailComponent(module);
     const emailElement = EmailComponent(payload);
-    const html = await render(emailElement);
-
-    return html;
+    return await render(emailElement);
   }
 }

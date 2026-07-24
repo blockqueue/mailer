@@ -1,11 +1,42 @@
-import fs from 'fs';
-import mjml2html from 'mjml';
+import * as fs from 'fs';
 import { logger } from '../../utils/logger';
 import { resolveTemplatePath } from '../../utils/template/template-path';
 import type { Renderer } from './index';
 
+interface MjmlError {
+  line: number;
+  message: string;
+  tagName?: string;
+  formattedMessage?: string;
+}
+
+interface MjmlResponse {
+  html: string;
+  errors: MjmlError[];
+}
+
+type Mjml2Html = (
+  mjml: string,
+  options?: { validationLevel?: 'strict' | 'soft' | 'skip' },
+) => MjmlResponse;
+
+function resolveMjml2Html(module: unknown): Mjml2Html {
+  if (typeof module === 'function') {
+    return module as Mjml2Html;
+  }
+  if (
+    module &&
+    typeof module === 'object' &&
+    'default' in module &&
+    typeof (module as { default: unknown }).default === 'function'
+  ) {
+    return (module as { default: Mjml2Html }).default;
+  }
+  throw new Error('Invalid mjml module shape');
+}
+
 export class MjmlRenderer implements Renderer {
-  render(
+  async render(
     templatePath: string,
     payload: Record<string, unknown>,
   ): Promise<string> {
@@ -40,6 +71,24 @@ export class MjmlRenderer implements Renderer {
       },
     );
 
+    // Lazy-load mjml so production images without mjml still boot
+    // (precompiled MJML templates use the HTML renderer instead)
+    let mjml2html: Mjml2Html;
+    try {
+      mjml2html = resolveMjml2Html(await import('mjml'));
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === 'Invalid mjml module shape'
+      ) {
+        throw error;
+      }
+      throw new Error(
+        'MJML runtime is not installed. Precompile MJML templates with compile-templates, ' +
+          'or install the mjml package for development rendering of index.mjml.',
+      );
+    }
+
     // Compile MJML to HTML
     const { html, errors } = mjml2html(mjmlContent, {
       validationLevel: 'soft',
@@ -49,6 +98,6 @@ export class MjmlRenderer implements Renderer {
       logger.warn({ errors }, 'MJML compilation warnings');
     }
 
-    return Promise.resolve(html);
+    return html;
   }
 }
