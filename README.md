@@ -1,6 +1,8 @@
 # BlockQueue Mailer
 
-A self-hostable email orchestration API that receives HTTP requests, renders emails using pluggable renderers, and sends via configurable nodemailer transports.
+A self-hostable email orchestration API that receives HTTP requests, renders emails using pluggable renderers, and sends via configurable transports.
+
+> **Internal use only.** This service is designed to run on a private network (VPC, Docker Swarm overlay, Kubernetes cluster network, etc.). Do **not** expose it directly on the public internet. Put it behind your internal mesh, reverse proxy, or service discovery, and restrict callers to trusted backends.
 
 ## About This Project
 
@@ -25,12 +27,11 @@ This is infrastructure software, not a standalone product. We focus on making it
 ## Features
 
 - **Multiple Renderers**: Support for React Email, MJML, and HTML templates
-- **Flexible Transports**: Support for all nodemailer transport types (SMTP, Sendmail, SES, Stream, custom)
+- **Flexible Transports**: Support for Zeptomail, AWS SES, and related providers
 - **YAML Configuration**: Configuration files with environment variable substitution
 - **Template Validation**: Templates are validated at startup with JSON Schema
 - **Email Validation**: Automatic validation of all email addresses (from, to, cc, bcc, replyTo)
-- **Authentication**: API key or HMAC request signing authentication
-- **Security Features**: HTTPS enforcement
+- **Authentication**: API key or HMAC request signing
 - **Docker Ready**: Slim runtime image; compile templates in your consumer Dockerfile (see [examples/mail-service](examples/mail-service))
 
 ## Table of Contents
@@ -57,18 +58,13 @@ auth:
   value: ${MAILER_API_KEY}
 
 accounts:
-  primary:
-    type: smtp
+  zeptomail:
+    type: zeptomail
     from: ${MAIL_FROM_EMAIL}
-    host: smtp.example.com
-    port: 587
-    secure: false
-    auth:
-      user: ${SMTP_USER}
-      pass: ${SMTP_PASSWORD}
+    apiKey: ${ZEPTOMAIL_API_KEY}
 
 defaults:
-  account: primary
+  account: zeptomail
   renderer: react-email
 ```
 
@@ -79,8 +75,7 @@ defaults:
 ```bash
 export MAILER_API_KEY=your-api-key
 export MAIL_FROM_EMAIL=noreply@example.com
-export SMTP_USER=your-email@example.com
-export SMTP_PASSWORD=your-password
+export ZEPTOMAIL_API_KEY=your-zeptomail-key
 ```
 
 **Note**: All environment variables are optional. You only need to set the variables that you reference in your `config.yaml` file. Variable names are user-defined - use whatever names you prefer in your config.
@@ -136,11 +131,11 @@ COPY --from=compile /templates /templates
 COPY ./config/config.yaml /config/config.yaml
 ```
 
-| Source | Compiled artifact |
-|--------|-------------------|
-| `index.tsx` (React Email) | `index.mjs` (components inlined) |
-| `index.mjml` | `index.html` (`renderer` → `html`) |
-| `index.html` | copied as-is |
+| Source                    | Compiled artifact                  |
+| ------------------------- | ---------------------------------- |
+| `index.tsx` (React Email) | `index.mjs` (components inlined)   |
+| `index.mjml`              | `index.html` (`renderer` → `html`) |
+| `index.html`              | copied as-is                       |
 
 Local API development (`npm run dev` in `apps/mailer`) still loads source `.tsx` / `.mjml` when `NODE_ENV=development`. Production expects precompiled artifacts.
 
@@ -161,7 +156,7 @@ auth:
   value: ${MAILER_API_KEY}
 ```
 
-**HMAC Request Signing (Recommended for public internet):**
+**HMAC Request Signing:**
 
 ```yaml
 auth:
@@ -185,28 +180,20 @@ auth:
   tolerance: 300 # 5 minutes in seconds
 
 accounts:
-  primary:
-    type: smtp
-    from: ${MAIL_FROM_EMAIL} # Fallback 'from' address for this account
-    host: smtp.gmail.com
-    port: 587
-    secure: false
-    auth:
-      user: ${SMTP_USER}
-      pass: ${SMTP_PASSWORD}
+  zeptomail:
+    type: zeptomail
+    from: ${MAIL_FROM_EMAIL}
+    apiKey: ${ZEPTOMAIL_API_KEY}
 
   ses:
-    type: smtp
+    type: ses
     from: ${MAIL_FROM_EMAIL}
-    host: smtp.zeptomail.com
-    port: 587
-    secure: false
-    auth:
-      user: ${SMTP_USER}
-      pass: ${SMTP_PASSWORD}
+    region: ${AWS_REGION}
+    accessKeyId: ${AWS_ACCESS_KEY_ID}
+    secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
 
 defaults:
-  account: primary
+  account: zeptomail
   renderer: react-email
 
 # Optional: Request validation settings
@@ -234,49 +221,29 @@ auth:
 
 ### Account Types
 
-#### SMTP
+Supported providers: **Zeptomail** and **Amazon SES**.
+
+#### Zeptomail
 
 ```yaml
 accounts:
-  smtp-account:
-    type: smtp
-    from: noreply@example.com # Optional: fallback 'from' address
-    host: smtp.example.com
-    port: 587
-    secure: false # true for 465, false for other ports
-    auth:
-      user: ${SMTP_USER}
-      pass: ${SMTP_PASSWORD}
-    # Any other nodemailer SMTP options can be added here
-```
-
-#### Sendmail
-
-```yaml
-accounts:
-  sendmail-account:
-    type: sendmail
-    path: /usr/sbin/sendmail
-    # Any other nodemailer sendmail options
+  zeptomail:
+    type: zeptomail
+    from: noreply@example.com # Optional fallback 'from'
+    apiKey: ${ZEPTOMAIL_API_KEY}
+    bounceAddress: ${ZEPTOMAIL_BOUNCE_ADDRESS} # Optional
 ```
 
 #### Amazon SES
 
 ```yaml
 accounts:
-  ses-account:
+  ses:
     type: ses
+    from: noreply@example.com # Optional fallback 'from'
     region: us-east-1
-    # Any other nodemailer SES options
-```
-
-#### Stream
-
-```yaml
-accounts:
-  stream-account:
-    type: stream
-    # Any other nodemailer stream options
+    accessKeyId: ${AWS_ACCESS_KEY_ID}
+    secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
 ```
 
 ## Templates
@@ -293,7 +260,7 @@ Templates are organized in directories under `/templates/`. Each template direct
 ```yaml
 id: welcome
 renderer: react-email
-account: primary # Optional: default account for this template
+account: zeptomail # Optional: default account for this template
 from: ${TEMPLATE_FROM_EMAIL} # Optional: default 'from' address (supports env vars)
 schema:
   type: object
@@ -327,7 +294,7 @@ Template YAML files support environment variable substitution using the same syn
 ```yaml
 id: welcome
 renderer: react-email
-account: ${TEMPLATE_ACCOUNT:-primary}
+account: ${TEMPLATE_ACCOUNT:-zeptomail}
 from: ${TEMPLATE_FROM_EMAIL:-noreply@example.com}
 schema:
   # ...
@@ -527,7 +494,7 @@ crypto.subtle
 ```json
 {
   "templateId": "welcome",
-  "account": "primary",
+  "account": "zeptomail",
   "payload": {
     "userName": "John",
     "appName": "MyApp"
@@ -556,8 +523,8 @@ crypto.subtle
   - `cc` (optional): CC recipient(s) - string or array of strings
   - `bcc` (optional): BCC recipient(s) - string or array of strings
   - `replyTo` (optional): Reply-to email address
-  - `attachments` (optional): Array of attachment objects (nodemailer format)
-  - Any other [nodemailer sendMail options](https://nodemailer.com/message/)
+  - `attachments` (optional): Array of attachment objects
+  - Provider-specific extras may be accepted depending on the account type
 
 **Note**: The `to` field accepts either a single email string or an array of email addresses for multiple recipients.
 
@@ -637,7 +604,7 @@ All email addresses are automatically validated before sending:
   - Account not found
 - `500` - Internal Server Error
   - Template rendering errors
-  - SMTP/transport errors
+  - Provider / transport errors
   - Other server errors
 
 ### Common Error Scenarios
@@ -685,22 +652,20 @@ All email addresses are automatically validated before sending:
 
 ## Security Features
 
+This service is intended for **private networks only**. Do not publish it to the public internet. Prefer network isolation (VPC, overlay network, cluster-internal Service) plus authentication below. If you need encryption or peer identity between internal services, terminate TLS or use **mTLS** at your ingress / service mesh — not in this application.
+
 ### Authentication
 
 The service supports two authentication methods:
 
-1. **API Key**: Simple string-based authentication (suitable for internal services)
-2. **HMAC Request Signing**: Cryptographic signature-based authentication (recommended for public internet)
+1. **API Key**: Simple shared-secret header (fine for trusted internal callers)
+2. **HMAC Request Signing**: Signed requests with timestamp tolerance (stronger integrity / replay protection)
 
 HMAC authentication provides:
 
 - Request integrity verification
 - Replay attack prevention (via timestamp tolerance)
 - No token storage required
-
-### HTTPS Enforcement
-
-HTTPS is enforced for all requests (except localhost for development). The service checks the `x-forwarded-proto` header from reverse proxies.
 
 ### Request Validation
 
@@ -751,7 +716,7 @@ Special logging for:
 - Failed authentication attempts
 - Large requests (>100KB)
 - Slow requests:
-  - `/send` endpoint: >10 seconds (email sending via external SMTP typically takes 1-5 seconds)
+  - `/send` endpoint: >10 seconds (sending via external providers typically takes 1-5 seconds)
   - Other endpoints: >1 second
 
 **PII Handling:** Email addresses and payload content are not logged - only metadata (template ID, account ID, etc.) is recorded.
@@ -819,11 +784,11 @@ apps/mailer/
 
 **Common examples** (these names are just examples - use whatever names you prefer):
 
-- `${MAILER_API_KEY}` - API key for authentication (or `${API_KEY}`, `${AUTH_TOKEN}`, etc.)
-- `${MAIL_FROM_EMAIL}` - Default sender email address (or `${FROM_EMAIL}`, `${SENDER}`, etc.)
-- `${SMTP_USER}` - SMTP username (or `${EMAIL_USER}`, `${USERNAME}`, etc.)
-- `${SMTP_PASSWORD}` - SMTP password (or `${EMAIL_PASS}`, `${PASSWORD}`, etc.)
-- `PORT` - Server port (default: 3000) - Note: This is a special case used by the server, not referenced in config.yaml
+- `${MAILER_API_KEY}` / `${MAILER_SIGNING_SECRET}` - Auth credentials
+- `${MAIL_FROM_EMAIL}` - Default sender address
+- `${ZEPTOMAIL_API_KEY}` - Zeptomail API key
+- `${AWS_REGION}` / `${AWS_ACCESS_KEY_ID}` / `${AWS_SECRET_ACCESS_KEY}` - SES credentials
+- `PORT` - Server port (default: 3000) — used by the process, not via config.yaml substitution
 
 ### Running Tests
 
@@ -848,7 +813,6 @@ docker build -t blockqueue/mailer:latest -f docker/mailer/Dockerfile.prod .
 The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.mjs`, and only `react` / `react-dom` / `@react-email/render`. It does **not** include `tsx`, `mjml`, or `@react-email/components`.
 
 (Chainguard’s public `node` image was evaluated; Distroless was smaller.)
-
 
 ### Shipping templates (recommended)
 

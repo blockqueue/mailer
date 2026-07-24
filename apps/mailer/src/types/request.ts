@@ -11,7 +11,7 @@ export interface SendRequest {
     bcc?: string | string[];
     replyTo?: string;
     attachments?: unknown[];
-    [key: string]: unknown; // Allow any nodemailer sendMail options
+    [key: string]: unknown;
   };
 }
 

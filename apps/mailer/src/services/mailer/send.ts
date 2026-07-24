@@ -43,14 +43,9 @@ function mergeSendMailOptions(
   const merged: SendMailOptions = {};
 
   for (const [key, value] of Object.entries(accountConfig)) {
-    // Skip provider credential fields that aren't sendMail options
+    // Skip provider credential fields
     if (
       key === 'type' ||
-      key === 'host' ||
-      key === 'port' ||
-      key === 'secure' ||
-      key === 'auth' ||
-      key === 'path' ||
       key === 'region' ||
       key === 'apiKey' ||
       key === 'accessKeyId' ||

@@ -6,7 +6,6 @@ import { Hono } from 'hono';
 import { sendEmailController } from './controllers/email.controller';
 import { auditLogMiddleware } from './middleware/auditLog';
 import { authMiddleware } from './middleware/auth';
-import { httpsEnforcementMiddleware } from './middleware/httpsEnforcement';
 import { requestValidationMiddleware } from './middleware/requestValidation';
 import type { SendRequest } from './types/request';
 import { loadConfig } from './utils/loaders/config.loader';
@@ -47,7 +46,6 @@ try {
   throw new Error(`Failed to initialize: ${errorMessage}`);
 }
 
-app.use('*', httpsEnforcementMiddleware());
 app.use('*', requestValidationMiddleware(config));
 app.use('*', auditLogMiddleware());
 

@@ -107,7 +107,7 @@ export function auditLogMiddleware() {
       );
     }
 
-    // /send often waits on external SMTP; other routes should be fast
+    // /send often waits on external providers; other routes should be fast
     const slowRequestThreshold = path === '/send' ? 10000 : 1000;
 
     if (responseTime > slowRequestThreshold) {
