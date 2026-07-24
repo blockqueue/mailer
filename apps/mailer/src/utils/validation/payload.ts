@@ -1,9 +1,7 @@
 import { z } from 'zod';
 import { jsonSchemaToZod } from '../schema/json-schema-to-zod';
 
-/**
- * Validate payload against a JSON Schema (converted to Zod)
- */
+/** Validate payload against a JSON Schema (via Zod) */
 export function validatePayload(
   schema: unknown,
   payload: unknown,
@@ -20,7 +18,6 @@ export function validatePayload(
       });
       return { valid: false, errors };
     }
-    // Fallback for unexpected errors
     return {
       valid: false,
       errors: [error instanceof Error ? error.message : 'Validation failed'],

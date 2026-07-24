@@ -1,7 +1,6 @@
 FROM node:24-alpine AS base
 
 
-# Prune stage
 FROM base AS prune
 
 RUN apk add --no-cache gcompat
@@ -12,22 +11,20 @@ RUN npm i --global turbo@2.7.0
 RUN turbo prune mailer --docker
 
 
-# Build stage
 FROM base AS builder
 
 WORKDIR /app
 
-# Copy pruned package files
 COPY --from=prune /app/out/full/ .
 COPY --from=prune /app/out/json/package-lock.json .
 
 RUN npm install
 
-# Bundle the application (server + compile-templates CLI)
+# Bundle server + compile-templates CLI
 RUN npm run build -- --filter=mailer
 
 
-# Runtime deps stage (Alpine has npm; final image will not)
+# Alpine has npm; final distroless image does not
 FROM base AS runtime-deps
 
 WORKDIR /app
@@ -35,7 +32,7 @@ WORKDIR /app
 COPY docker/mailer/package.runtime.json ./package.json
 COPY --from=builder /app/apps/mailer/dist ./dist
 
-# Install only render peers.
+# Install render peers only
 RUN npm install --omit=dev \
   && npm cache clean --force \
   && rm -rf /root/.npm /tmp/* \
@@ -44,8 +41,7 @@ RUN npm install --omit=dev \
   && chown -R 65532:65532 /app /templates
 
 
-# Final stage — Google Distroless.
-# Entrypoint is already /nodejs/bin/node; no shell, npm, or yarn.
+# Distroless: entrypoint is /nodejs/bin/node (no shell/npm)
 FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runner
 
 WORKDIR /app

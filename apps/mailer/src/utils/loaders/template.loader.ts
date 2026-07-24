@@ -18,10 +18,6 @@ export class TemplateLoader {
     this.defaultRenderer = defaultRenderer;
   }
 
-  /**
-   * Load and validate all templates at startup
-   * @returns Object with success count, failure count, and whether to fail startup
-   */
   loadAllTemplates(): {
     successCount: number;
     failureCount: number;
@@ -60,7 +56,6 @@ export class TemplateLoader {
           },
           'Failed to load template',
         );
-        // Continue loading other templates
       }
     }
 
@@ -94,9 +89,6 @@ export class TemplateLoader {
     return { successCount, failureCount, failures };
   }
 
-  /**
-   * Load a single template configuration
-   */
   private loadTemplate(
     templateId: string,
   ): TemplateConfig & { templatePath: string } {
@@ -108,7 +100,6 @@ export class TemplateLoader {
     }
 
     const config = loadYamlWithEnv(templateYamlPath) as TemplateConfig;
-    // Validate required fields
     if (!config.id) {
       throw new Error(`Template "${templateId}" is missing required field: id`);
     }
@@ -119,10 +110,8 @@ export class TemplateLoader {
       );
     }
 
-    // Use template renderer or fall back to default renderer
     const rendererType = config.renderer ?? this.defaultRenderer;
 
-    // Renderer is validated by type, but check anyway
     if (
       rendererType &&
       !['react-email', 'mjml', 'html'].includes(rendererType)
@@ -147,9 +136,8 @@ export class TemplateLoader {
   }
 
   /**
-   * Resolve the template entry file for a renderer.
-   * Production expects precompiled artifacts (index.mjs / index.html).
-   * Development may fall back to source index.tsx / index.mjml.
+   * Resolve template entry: prod expects index.mjs / index.html;
+   * NODE_ENV=development may fall back to index.tsx / index.mjml.
    */
   private resolveTemplateFile(
     templateDir: string,
@@ -181,7 +169,6 @@ export class TemplateLoader {
       throw new Error(`Template file not found: ${source}`);
     }
 
-    // html (default)
     const htmlPath = path.join(templateDir, 'index.html');
     if (fs.existsSync(htmlPath)) {
       return htmlPath;
@@ -189,18 +176,12 @@ export class TemplateLoader {
     throw new Error(`Template file not found: ${htmlPath}`);
   }
 
-  /**
-   * Get a template by ID
-   */
   getTemplate(
     templateId: string,
   ): (TemplateConfig & { templatePath: string }) | undefined {
     return this.templates.get(templateId);
   }
 
-  /**
-   * Check if a template exists
-   */
   hasTemplate(templateId: string): boolean {
     return this.templates.has(templateId);
   }

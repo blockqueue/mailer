@@ -30,7 +30,7 @@ This is infrastructure software, not a standalone product. We focus on making it
 - **Template Validation**: Templates are validated at startup with JSON Schema
 - **Email Validation**: Automatic validation of all email addresses (from, to, cc, bcc, replyTo)
 - **Authentication**: API key or HMAC request signing authentication
-- **Security Features**: Optional IP allowlisting, rate limiting, HTTPS enforcement
+- **Security Features**: HTTPS enforcement
 - **Docker Ready**: Slim runtime image; compile templates in your consumer Dockerfile (see [examples/mail-service](examples/mail-service))
 
 ## Table of Contents
@@ -96,20 +96,22 @@ docker-compose up
 1. Install dependencies:
 
 ```bash
-bun install
+npm install
 ```
 
-2. Create `/data/config/config.yaml` and `/data/templates/` directory structure
+2. Copy `apps/mailer/.env.example` to `apps/mailer/.env` (points at [examples/mail-service](examples/mail-service) config and emails by default)
 
-3. Set environment variables (optional - only set the variables you reference in your `config.yaml` file)
+3. Set any provider secrets you reference in that config
 
 4. Run the server:
 
 ```bash
-bun run dev
+npm run dev --workspace=mailer
 ```
 
 The server will start on port 3000 (or the port specified by `PORT` environment variable).
+
+For a production-like Docker run with compiled templates, see [examples/mail-service](examples/mail-service).
 
 ## Shipping your own templates
 
@@ -167,21 +169,6 @@ auth:
   header: x-mailer-signature # Optional, defaults to 'x-mailer-signature'
   secret: ${MAILER_SIGNING_SECRET}
   tolerance: 300 # Timestamp tolerance in seconds (default: 300 = 5 minutes)
-
-# Optional: IP allowlisting
-ipAllowlist:
-  enabled: true
-  allowedIps:
-    - 192.168.1.0/24 # CIDR notation
-    - 10.0.0.1 # Single IP
-
-# Optional: Rate limiting (user-configurable limits, strongly recommend IP allowlisting if you want to use rate limiting)
-rateLimit:
-  enabled: true
-  maxRequests: 100 # User-defined based on their usage
-  windowMinutes: 1
-  maxRequestsPerHour: 1000 # User-defined based on their usage
-  windowHours: 1
 
 # Optional: Request validation settings
 requestValidation:
@@ -711,53 +698,6 @@ HMAC authentication provides:
 - Replay attack prevention (via timestamp tolerance)
 - No token storage required
 
-### IP Allowlisting (Optional)
-
-IP allowlisting restricts access to specific IP addresses or CIDR blocks. This is useful for server-to-server communication where you know the source IPs.
-
-**Configuration:**
-
-```yaml
-ipAllowlist:
-  enabled: true
-  allowedIps:
-    - 192.168.1.0/24 # CIDR notation (all IPs in subnet)
-    - 10.0.0.1 # Single IP address
-```
-
-**When to use:**
-
-- Server-to-server communication with known backend IPs
-- Additional layer of security beyond authentication
-- Can reduce the need for aggressive rate limiting
-
-### Rate Limiting (Optional)
-
-Rate limiting prevents abuse by limiting the number of requests per time window. **Strongly recommended to use IP allowlisting alongside rate limiting** for server-to-server communication.
-
-**Configuration:**
-
-```yaml
-rateLimit:
-  enabled: true
-  maxRequests: 100 # Maximum requests per window
-  windowMinutes: 1 # Time window in minutes
-  maxRequestsPerHour: 1000 # Maximum requests per hour
-  windowHours: 1 # Hourly window
-```
-
-**How it works:**
-
-- Tracks requests by IP address using a sliding window algorithm
-- Applies both per-minute and per-hour limits (if configured)
-- Returns `429 Too Many Requests` with `Retry-After` header when limit exceeded
-- Fully user-configurable - set limits based on your usage patterns
-
-**Recommendation:**
-
-- For server-to-server communication, use IP allowlisting to restrict access, then add rate limiting to protect against bugs, compromised servers, or enforce quotas
-- Rate limiting is optional and can be disabled entirely
-
 ### HTTPS Enforcement
 
 HTTPS is enforced for all requests (except localhost for development). The service checks the `x-forwarded-proto` header from reverse proxies.
@@ -805,13 +745,10 @@ IP addresses are detected in the following scenarios:
 - If using a reverse proxy, ensure it sets the `x-forwarded-for` header
 - Most production setups (nginx, AWS ALB, etc.) set this header automatically
 - Without a reverse proxy or proper headers, IP detection will fail
-- This affects rate limiting and IP allowlisting (they require IP detection)
 
 Special logging for:
 
 - Failed authentication attempts
-- Rate limit violations
-- IP allowlist rejections
 - Large requests (>100KB)
 - Slow requests:
   - `/send` endpoint: >10 seconds (email sending via external SMTP typically takes 1-5 seconds)
@@ -924,12 +861,4 @@ docker compose up bq-example-mail-service
 
 ### Running with precompiled template volumes
 
-If you mount `/templates` yourself, mount **compiled** output (`index.mjs` / `index.html`), and recreate the ESM resolve symlink:
-
-```bash
-docker run -p 3000:3000 \
-  -v $(pwd)/data/config:/config \
-  -v $(pwd)/data/templates-compiled:/templates \
-  blockqueue/mailer:latest
-# then inside the image (or in your Dockerfile): ln -sfn /app/node_modules /templates/node_modules
-```
+If you mount `/templates` yourself, mount **compiled** output (`index.mjs` / `index.html`), and include the ESM resolve symlink (`ln -sfn /app/node_modules /templates/node_modules` in an image with a shell). Prefer the [examples/mail-service](examples/mail-service) Dockerfile, which does this for you.

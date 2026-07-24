@@ -11,9 +11,6 @@ export interface Renderer {
   ): Promise<string>;
 }
 
-/**
- * Get a renderer instance by type
- */
 export function getRenderer(type: RendererType): Renderer {
   switch (type) {
     case 'react-email':
@@ -23,7 +20,6 @@ export function getRenderer(type: RendererType): Renderer {
     case 'html':
       return new HtmlRenderer();
     default: {
-      // This should never happen due to TypeScript, but handle it anyway
       const _exhaustive: never = type;
       throw new Error(`Unknown renderer type: ${String(_exhaustive)}`);
     }

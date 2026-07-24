@@ -1,12 +1,6 @@
 /**
- * Compile mailer templates for production.
- *
- * React Email (.tsx) → ESM index.mjs (components inlined; react external)
- * MJML (.mjml) → index.html with {{vars}} preserved; renderer rewritten to html
- * HTML (.html) → copied as-is
- *
- * Usage: node dist/compile-templates.mjs <inputDir> <outputDir>
- * Defaults: /templates-src → /templates
+ * Compile templates for production: .tsx→index.mjs, .mjml→index.html (renderer→html), .html copy.
+ * Usage: node dist/compile-templates.mjs [inputDir] [outputDir]  (defaults: /templates-src → /templates)
  */
 import * as esbuild from 'esbuild';
 import yaml from 'js-yaml';

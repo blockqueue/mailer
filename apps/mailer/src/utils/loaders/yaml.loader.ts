@@ -1,24 +1,19 @@
 import * as fs from 'fs';
 import yaml from 'js-yaml';
 
-/**
- * Replace environment variable placeholders in a string
- * Supports ${VAR_NAME} and ${VAR_NAME:-default} syntax
- */
+/** Replace ${VAR} / ${VAR:-default} placeholders (shell-style) */
 function substituteEnvVars(value: string): string {
   return value.replace(
     /\$\{([^}:-]+)(:-([^}]*))?\}/g,
     (match, varName: string, _: string, defaultValue: string | undefined) => {
       const envValue = process.env[varName];
-      // Use env value if it's set and non-empty (standard shell behavior: ${VAR:-default})
+      // Prefer non-empty env; else default; else error (shell ${VAR:-default})
       if (envValue !== undefined && envValue !== '') {
         return envValue;
       }
-      // Fall back to default value if provided
       if (defaultValue !== undefined) {
         return defaultValue;
       }
-      // If no default and env var is unset or empty, throw error
       throw new Error(
         `Environment variable ${varName} is not set (or is empty) and no default value provided`,
       );
@@ -26,9 +21,6 @@ function substituteEnvVars(value: string): string {
   );
 }
 
-/**
- * Recursively process an object to substitute environment variables
- */
 function processObject(obj: unknown): unknown {
   if (typeof obj === 'string') {
     return substituteEnvVars(obj);
@@ -49,9 +41,7 @@ function processObject(obj: unknown): unknown {
   return obj;
 }
 
-/**
- * Load and parse a YAML file with environment variable substitution
- */
+/** Load YAML with environment variable substitution */
 export function loadYamlWithEnv(filePath: string): unknown {
   if (!fs.existsSync(filePath)) {
     throw new Error(`Config file not found: ${filePath}`);

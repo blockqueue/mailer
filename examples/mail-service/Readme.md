@@ -22,6 +22,7 @@ examples/mail-service/
 │   └── welcome-html-email/
 ├── config/
 │   └── config.yaml         # Auth, accounts, defaults
+├── scripts/                # Optional API smoke tests
 ├── Dockerfile              # Compile stage + slim runtime
 ├── package.json            # Preview-only dependencies
 └── Readme.md

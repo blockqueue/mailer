@@ -6,9 +6,7 @@ import type { SesAccountConfig } from '../../types/config';
 import type { EmailOptions, SendResult } from './base-client';
 import { EmailClient } from './base-client';
 
-/**
- * AWS SES email client implementation
- */
+/** AWS SES email client */
 export class SesEmailClient extends EmailClient<SesAccountConfig> {
   private readonly client: SESClient;
 
@@ -30,9 +28,6 @@ export class SesEmailClient extends EmailClient<SesAccountConfig> {
     return value ? (Array.isArray(value) ? value : [value]) : undefined;
   }
 
-  /**
-   * Validate that all required Ses credentials are present
-   */
   static validateCredentials(config: SesAccountConfig): void {
     const accessKeyId = config.accessKeyId;
     if (
@@ -56,9 +51,6 @@ export class SesEmailClient extends EmailClient<SesAccountConfig> {
     }
   }
 
-  /**
-   * Send an email via AWS SES
-   */
   async send(options: EmailOptions): Promise<SendResult> {
     try {
       const toAddresses = this.toArray(options.to);

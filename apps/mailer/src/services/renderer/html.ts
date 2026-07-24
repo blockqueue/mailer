@@ -8,14 +8,11 @@ export class HtmlRenderer implements Renderer {
     templatePath: string,
     payload: Record<string, unknown>,
   ): Promise<string> {
-    // Resolve and validate the template path
     const absolutePath = resolveTemplatePath(templatePath);
 
-    // Read the HTML file
     let htmlContent = fs.readFileSync(absolutePath, 'utf-8');
 
-    // Simple variable substitution: {{variableName}}
-    // Replace placeholders with payload values
+    // {{variableName}} substitution
     htmlContent = htmlContent.replace(
       /\{\{(\w+)\}\}/g,
       (match, varName: string) => {
