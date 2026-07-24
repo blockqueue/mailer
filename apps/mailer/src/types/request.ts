@@ -1,6 +1,4 @@
-/**
- * Request body for POST /send endpoint
- */
+/** Request body for POST /send */
 export interface SendRequest {
   templateId: string;
   account?: string;
@@ -13,14 +11,11 @@ export interface SendRequest {
     bcc?: string | string[];
     replyTo?: string;
     attachments?: unknown[];
-    [key: string]: unknown; // Allow any nodemailer sendMail options
+    [key: string]: unknown;
   };
 }
 
-/**
- * Response from POST /send endpoint.
- * Matches the shape expected by consumers (e.g. BlockQueue mail client).
- */
+/** Response from POST /send (consumer-compatible shape) */
 export type SendResponse =
   | {
       success: true;

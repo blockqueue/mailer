@@ -40,14 +40,11 @@ export class MjmlRenderer implements Renderer {
     templatePath: string,
     payload: Record<string, unknown>,
   ): Promise<string> {
-    // Resolve and validate the template path
     const absolutePath = resolveTemplatePath(templatePath);
 
-    // Read the MJML file
     let mjmlContent = fs.readFileSync(absolutePath, 'utf-8');
 
-    // Simple variable substitution: {{variableName}}
-    // Replace placeholders with payload values
+    // {{variableName}} substitution before MJML compile
     mjmlContent = mjmlContent.replace(
       /\{\{(\w+)\}\}/g,
       (match, varName: string) => {
@@ -89,7 +86,6 @@ export class MjmlRenderer implements Renderer {
       );
     }
 
-    // Compile MJML to HTML
     const { html, errors } = mjml2html(mjmlContent, {
       validationLevel: 'soft',
     });

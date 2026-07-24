@@ -1,12 +1,6 @@
 /**
- * Compile mailer templates for production.
- *
- * React Email (.tsx) → ESM index.mjs (components inlined; react external)
- * MJML (.mjml) → index.html with {{vars}} preserved; renderer rewritten to html
- * HTML (.html) → copied as-is
- *
- * Usage: node dist/compile-templates.mjs <inputDir> <outputDir>
- * Defaults: /templates-src → /templates
+ * Compile templates for production: .tsx→index.mjs, .mjml→index.html (renderer→html), .html copy.
+ * Usage: node dist/compile-templates.mjs [inputDir] [outputDir]  (defaults: /templates-src → /app/templates)
  */
 import * as esbuild from 'esbuild';
 import yaml from 'js-yaml';
@@ -30,7 +24,7 @@ class CompileError extends Error {
 }
 
 const DEFAULT_INPUT = '/templates-src';
-const DEFAULT_OUTPUT = '/templates';
+const DEFAULT_OUTPUT = '/app/templates';
 
 function printUsage(): void {
   console.error(
@@ -129,11 +123,10 @@ function compileMjml(entryPath: string, outfile: string): void {
   });
 
   if (errors.length > 0) {
-    for (const err of errors) {
-      console.warn(
-        `[mjml] ${entryPath}: ${err.formattedMessage ?? err.message}`,
-      );
-    }
+    const details = errors
+      .map((err) => err.formattedMessage ?? err.message)
+      .join('\n');
+    throw new CompileError(`MJML compilation failed for ${entryPath}:\n${details}`);
   }
 
   ensureDir(path.dirname(outfile));
@@ -176,6 +169,7 @@ async function compileTemplateDir(
       throw new CompileError(`Template file not found: ${entry}`);
     }
     await compileReactEmail(entry, path.join(outDir, 'index.mjs'));
+    outConfig.renderer = 'react-email';
   } else if (renderer === 'mjml') {
     const entry = path.join(templateDir, 'index.mjml');
     if (!fs.existsSync(entry)) {

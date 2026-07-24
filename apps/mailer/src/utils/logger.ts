@@ -1,9 +1,6 @@
 import pino from 'pino';
 
-/**
- * Logger instance for the application
- * Uses Pino for fast, structured JSON logging
- */
+/** Application logger (Pino, structured JSON) */
 export const logger = pino({
   level: process.env.LOG_LEVEL ?? 'info',
   formatters: {

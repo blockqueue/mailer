@@ -1,17 +1,12 @@
 /**
- * Test script: send an email using the welcome-mjml-email template.
- *
- * Usage (from repo root):
- *   MAILER_SIGNING_SECRET=your_secret MAILER_BASE_URL=http://localhost:10000 node packages/data/test/send-welcome-mjml.js
- *
- * Optional env:
- *   MAILER_SIGNING_SECRET - required for HMAC auth
- *   TEST_TO_EMAIL    - recipient (default: test@example.com)
+ * Send a test email via welcome-mjml-email (mail-service on :3000).
+ * Usage: MAILER_SIGNING_SECRET=… node examples/mail-service/scripts/send-welcome-mjml.js
+ * Optional: MAILER_BASE_URL, TEST_TO_EMAIL
  */
 
 const crypto = require('crypto');
 
-const BASE_URL = 'http://localhost:10000';
+const BASE_URL = process.env.MAILER_BASE_URL || 'http://localhost:3000';
 const SECRET =
   process.env.MAILER_SIGNING_SECRET ||
   'wefeqfdwfwrfqfweq9343rrwfeafeqr42r432ef';

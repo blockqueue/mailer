@@ -3,14 +3,6 @@ import type { SendRequest } from '../types/request';
 import { getClientIp } from '../utils/getClientIp';
 import { logger } from '../utils/logger';
 
-/**
- * Extract metadata from parsed request body
- * Returns templateId and accountId for audit logging
- *
- * Note: parsedBody is set by request validation middleware for all POST requests.
- * For POST requests, missing parsedBody is treated as an error condition.
- * For non-POST requests (e.g., GET /health), parsedBody is not expected.
- */
 function extractRequestMetadata(c: Context): {
   templateId?: string;
   accountId?: string;
@@ -18,20 +10,16 @@ function extractRequestMetadata(c: Context): {
   const method = c.req.method;
   const path = c.req.path;
 
-  // For non-POST requests, parsedBody is not expected
   if (method !== 'POST') {
     return {};
   }
 
-  // Hono's context.get() doesn't support custom keys in its type system
-  // We use a type assertion to access the custom 'parsedBody' variable
-  // This is set by request validation middleware for POST requests
+  // Hono's context.get() doesn't type custom keys; assertion for 'parsedBody'
   const parsedBody = (c as unknown as { get: (key: string) => unknown }).get(
     'parsedBody',
   ) as SendRequest | undefined;
 
-  // For POST requests, parsedBody should always be available
-  // If it's missing, this indicates a critical bug in the middleware chain
+  // Missing parsedBody on POST means the middleware chain is broken
   if (!parsedBody || typeof parsedBody !== 'object') {
     throw new Error(`Missing parsedBody for POST request to ${path}.`);
   }
@@ -48,10 +36,7 @@ function extractRequestMetadata(c: Context): {
   };
 }
 
-/**
- * Audit logging middleware
- * Logs all requests with metadata (PII-safe)
- */
+/** PII-safe request audit logging */
 export function auditLogMiddleware() {
   return async (c: Context, next: Next) => {
     const startTime = Date.now();
@@ -63,14 +48,11 @@ export function auditLogMiddleware() {
 
     await next();
 
-    // Extract metadata from request if available (for /send endpoint)
-    // parsedBody is set by request validation middleware, so it's available for all requests
     const { templateId, accountId } = extractRequestMetadata(c);
 
     const responseTime = Date.now() - startTime;
     const statusCode = c.res.status;
 
-    // Log all requests
     logger.info(
       {
         ip,
@@ -85,7 +67,6 @@ export function auditLogMiddleware() {
       'Request processed',
     );
 
-    // Special logging for important events
     if (statusCode === 401) {
       logger.warn(
         {
@@ -114,22 +95,7 @@ export function auditLogMiddleware() {
       );
     }
 
-    if (statusCode === 429) {
-      logger.warn(
-        {
-          ip,
-          method,
-          path,
-          statusCode,
-          templateId,
-          accountId,
-        },
-        'Rate limit exceeded',
-      );
-    }
-
     if (requestSize && requestSize > 100 * 1024) {
-      // Log large requests (>100KB)
       logger.warn(
         {
           ip,
@@ -141,10 +107,8 @@ export function auditLogMiddleware() {
       );
     }
 
-    // Slow request threshold varies by endpoint
-    // Email sending typically takes 1-5 seconds for external SMTP services
-    // Health checks and other endpoints should be much faster
-    const slowRequestThreshold = path === '/send' ? 10000 : 1000; // 10s for /send, 1s for others
+    // /send often waits on external providers; other routes should be fast
+    const slowRequestThreshold = path === '/send' ? 10000 : 1000;
 
     if (responseTime > slowRequestThreshold) {
       logger.warn(

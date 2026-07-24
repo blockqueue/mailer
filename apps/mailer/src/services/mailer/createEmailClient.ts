@@ -3,10 +3,7 @@ import type { EmailClient } from './base-client';
 import { SesEmailClient } from './ses-client';
 import { ZeptomailEmailClient } from './zeptomail-client';
 
-/**
- * Create an email client from account configuration
- * Supports SES and Zeptomail
- */
+/** Create an email client from account configuration (SES or Zeptomail) */
 export function createEmailClient(accountConfig: AccountConfig): EmailClient {
   switch (accountConfig.type) {
     case 'ses':

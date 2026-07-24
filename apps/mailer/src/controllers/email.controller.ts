@@ -8,9 +8,6 @@ import type { TemplateLoader } from '../utils/loaders/template.loader';
 import { logger } from '../utils/logger';
 import { validatePayload } from '../utils/validation/payload';
 
-/**
- * Send email controller
- */
 export async function sendEmailController(
   c: Context,
   body: SendRequest,
@@ -18,7 +15,6 @@ export async function sendEmailController(
   templateLoader: TemplateLoader,
 ): Promise<Response> {
   try {
-    // Validate required fields
     if (!body.templateId) {
       return c.json(
         { success: false, message: 'Missing required field: templateId' },
@@ -26,7 +22,6 @@ export async function sendEmailController(
       );
     }
 
-    // Payload is required
     if (typeof body.payload !== 'object') {
       return c.json(
         { success: false, message: 'Missing required field: payload' },
@@ -34,7 +29,6 @@ export async function sendEmailController(
       );
     }
 
-    // Load template
     const template = templateLoader.getTemplate(body.templateId);
     if (!template) {
       return c.json(
@@ -46,7 +40,6 @@ export async function sendEmailController(
       );
     }
 
-    // Validate payload against template schema
     const validation = validatePayload(template.schema, body.payload);
     if (!validation.valid) {
       return c.json(
@@ -59,7 +52,7 @@ export async function sendEmailController(
       );
     }
 
-    // Resolve account (request > template > global default)
+    // Resolve account: request > template > global default
     const accountId =
       body.account ?? template.account ?? config.defaults?.account;
     if (!accountId) {
@@ -83,7 +76,7 @@ export async function sendEmailController(
       );
     }
 
-    // Resolve renderer (template > global default)
+    // Resolve renderer: template > global default
     const rendererType = template.renderer ?? config.defaults?.renderer;
     if (!rendererType) {
       return c.json(
@@ -93,16 +86,12 @@ export async function sendEmailController(
     }
     const renderer = getRenderer(rendererType);
 
-    // Render email HTML
     const html = await renderer.render(template.templatePath, body.payload);
 
-    // Create email client
     const client = createEmailClient(accountConfig);
 
-    // Send email
     const result = await sendEmail(client, html, body, template, accountConfig);
 
-    // Close client connection
     await client.close();
 
     const response: SendResponse = {

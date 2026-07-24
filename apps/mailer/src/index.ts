@@ -6,22 +6,14 @@ import { Hono } from 'hono';
 import { sendEmailController } from './controllers/email.controller';
 import { auditLogMiddleware } from './middleware/auditLog';
 import { authMiddleware } from './middleware/auth';
-import { httpsEnforcementMiddleware } from './middleware/httpsEnforcement';
-import { ipAllowlistMiddleware } from './middleware/ipAllowlist';
-import { rateLimitMiddleware } from './middleware/rateLimit';
 import { requestValidationMiddleware } from './middleware/requestValidation';
 import type { SendRequest } from './types/request';
 import { loadConfig } from './utils/loaders/config.loader';
 import { TemplateLoader } from './utils/loaders/template.loader';
 import { logger } from './utils/logger';
 
-/**
- * Helper to get parsed body from context (set by request validation middleware)
- */
 function getParsedBody(c: Context): SendRequest | undefined {
-  // Hono's context.get() doesn't support custom keys in its type system
-  // We use a type assertion to access the custom 'parsedBody' variable
-  // This is set by request validation middleware for POST requests
+  // Hono's context.get() doesn't type custom keys; assertion for 'parsedBody'
   return (c as unknown as { get: (key: string) => unknown }).get(
     'parsedBody',
   ) as SendRequest | undefined;
@@ -29,7 +21,6 @@ function getParsedBody(c: Context): SendRequest | undefined {
 
 const app = new Hono();
 
-// Load configuration at startup
 let config: ReturnType<typeof loadConfig>;
 let templateLoader: TemplateLoader;
 
@@ -40,7 +31,6 @@ try {
   templateLoader = new TemplateLoader(config.defaults?.renderer);
   const loadResult = templateLoader.loadAllTemplates();
 
-  // Warn if no templates loaded successfully
   if (loadResult.successCount === 0 && loadResult.failureCount > 0) {
     logger.error(
       {
@@ -56,29 +46,14 @@ try {
   throw new Error(`Failed to initialize: ${errorMessage}`);
 }
 
-// Apply middleware in order:
-// 1. HTTPS enforcement (always)
-app.use('*', httpsEnforcementMiddleware());
-
-// 2. IP allowlisting (if enabled, before auth)
-app.use('*', ipAllowlistMiddleware(config));
-
-// 3. Request validation (always)
 app.use('*', requestValidationMiddleware(config));
-
-// 4. Rate limiting (if enabled, skip for /health)
-app.use('/send', rateLimitMiddleware(config));
-
-// 5. Audit logging (always)
 app.use('*', auditLogMiddleware());
 
 app.get('/health', (c) => {
   return c.json({ status: 'ok' });
 });
 
-// 6. Authentication (always for /send)
 app.post('/send', authMiddleware(config), async (c) => {
-  // Body is already parsed by request validation middleware
   const body = getParsedBody(c);
   if (!body) {
     return c.json(

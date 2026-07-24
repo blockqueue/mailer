@@ -6,12 +6,9 @@ import { validateEmailAddresses } from '../../utils/validation/email';
 import type { EmailClient, EmailOptions } from './base-client';
 
 /**
- * Merge sendMail options from multiple sources with priority:
- * 1. Request body sendMailOptions (highest priority - can override everything)
- * 2. Template-level options (middle priority - overrides account)
- * 3. Account-level options (lowest priority, fallback)
- *
- * For each property, only use it if it's explicitly provided and non-empty.
+ * Merge sendMail options with priority:
+ * request sendMailOptions > template > account (fallback).
+ * Only explicit non-empty values are used.
  */
 interface SendMailOptions {
   from?: string;
@@ -25,9 +22,6 @@ interface SendMailOptions {
   [key: string]: unknown;
 }
 
-/**
- * Check if a value is a non-empty string or a non-empty array
- */
 function isValidValue(value: unknown): boolean {
   if (value === undefined || value === null) {
     return false;
@@ -38,7 +32,6 @@ function isValidValue(value: unknown): boolean {
   if (Array.isArray(value)) {
     return value.length > 0;
   }
-  // For other types (numbers, booleans, objects), consider them valid if they exist
   return true;
 }
 
@@ -49,17 +42,10 @@ function mergeSendMailOptions(
 ): SendMailOptions {
   const merged: SendMailOptions = {};
 
-  // Step 1: Start with account-level options (lowest priority)
-  // Account config can have any sendMail options (from, to, subject, etc.)
   for (const [key, value] of Object.entries(accountConfig)) {
-    // Skip account-specific fields that aren't sendMail options
+    // Skip provider credential fields
     if (
       key === 'type' ||
-      key === 'host' ||
-      key === 'port' ||
-      key === 'secure' ||
-      key === 'auth' ||
-      key === 'path' ||
       key === 'region' ||
       key === 'apiKey' ||
       key === 'accessKeyId' ||
@@ -73,10 +59,8 @@ function mergeSendMailOptions(
     }
   }
 
-  // Step 2: Apply template-level options (middle priority - overrides account)
-  // Template can have any sendMail options
   for (const [key, value] of Object.entries(template)) {
-    // Skip template-specific fields that aren't sendMail options
+    // Skip template metadata fields that aren't sendMail options
     if (
       key === 'id' ||
       key === 'renderer' ||
@@ -91,7 +75,6 @@ function mergeSendMailOptions(
     }
   }
 
-  // Step 3: Apply request sendMailOptions (highest priority - overrides template and account)
   if (requestSendMailOptions) {
     for (const [key, value] of Object.entries(requestSendMailOptions)) {
       if (isValidValue(value)) {
@@ -103,9 +86,6 @@ function mergeSendMailOptions(
   return merged;
 }
 
-/**
- * Validate all email fields in sendMail options
- */
 function validateSendMailOptions(options: SendMailOptions): void {
   const validationResults: { field: string; invalid: string[] }[] = [
     {
@@ -145,9 +125,6 @@ function validateSendMailOptions(options: SendMailOptions): void {
   }
 }
 
-/**
- * Send an email using an email client
- */
 export async function sendEmail(
   client: EmailClient,
   html: string,
@@ -155,18 +132,14 @@ export async function sendEmail(
   template: TemplateConfig,
   accountConfig: AccountConfig,
 ): Promise<{ messageId: string; success: boolean }> {
-  // Merge sendMail options from all sources
-  // Priority: request.sendMailOptions > template.from > account.from (fallback)
   const sendMailOptions = mergeSendMailOptions(
     request.sendMailOptions,
     template,
     accountConfig,
   );
 
-  // Validate all email addresses
   validateSendMailOptions(sendMailOptions);
 
-  // Ensure required fields are present
   if (!sendMailOptions.from) {
     throw new Error('Missing required field: from');
   }
@@ -177,7 +150,6 @@ export async function sendEmail(
     throw new Error('Missing required field: subject');
   }
 
-  // Prepare email options
   const emailOptions: EmailOptions = {
     from: sendMailOptions.from,
     to: sendMailOptions.to,
@@ -191,7 +163,6 @@ export async function sendEmail(
     }),
   };
 
-  // Send the email
   try {
     const result = await client.send(emailOptions);
     return {

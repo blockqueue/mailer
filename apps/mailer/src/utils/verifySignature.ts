@@ -17,7 +17,6 @@ export function verifySignature(opts: VerifySignatureOptions): boolean {
 
   if (!signature || !secret) return false;
 
-  // Parse the signature header: "t=<timestamp>,v1=<signature>"
   const parts = signature.split(',');
   let timestamp: number | null = null;
   let signatureValue: string | null = null;
@@ -33,22 +32,19 @@ export function verifySignature(opts: VerifySignatureOptions): boolean {
 
   if (!timestamp || !signatureValue) return false;
 
-  // Validate timestamp is in seconds (not milliseconds)
-  // Timestamps in seconds for current time are ~1.7 billion, milliseconds are ~1.7 trillion
-  // Reject timestamps that are clearly in milliseconds range (> 1e12)
+  // Reject millisecond timestamps (~1e12+); we expect seconds (~1.7e9)
   if (timestamp > 1e12) {
     logger.warn(
       { timestamp },
       'Timestamp appears to be in milliseconds, not seconds',
     );
-    return false; // Timestamp appears to be in milliseconds, not seconds
+    return false;
   }
 
-  // Check timestamp tolerance
-  // Date.now() returns milliseconds, so convert to seconds for comparison
+  // Date.now() is ms; convert to seconds for comparison
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - timestamp) > tolerance) {
-    return false; // Signature too old or from future
+    return false;
   }
 
   const expectedSignature = crypto
@@ -57,7 +53,6 @@ export function verifySignature(opts: VerifySignatureOptions): boolean {
     .update(payload)
     .digest(encoding);
 
-  // Compare signatures using timing-safe comparison
   return crypto.timingSafeEqual(
     Buffer.from(signatureValue, encoding),
     Buffer.from(expectedSignature, encoding),

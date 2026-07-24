@@ -1,6 +1,8 @@
 # BlockQueue Mailer
 
-A self-hostable email orchestration API that receives HTTP requests, renders emails using pluggable renderers, and sends via configurable nodemailer transports.
+A self-hostable email orchestration API that receives HTTP requests, renders emails using pluggable renderers, and sends via configurable transports.
+
+> **Internal use only.** This service is designed to run on a private network (VPC, Docker Swarm overlay, Kubernetes cluster network, etc.). Do **not** expose it directly on the public internet. Put it behind your internal mesh, reverse proxy, or service discovery, and restrict callers to trusted backends.
 
 ## About This Project
 
@@ -25,12 +27,11 @@ This is infrastructure software, not a standalone product. We focus on making it
 ## Features
 
 - **Multiple Renderers**: Support for React Email, MJML, and HTML templates
-- **Flexible Transports**: Support for all nodemailer transport types (SMTP, Sendmail, SES, Stream, custom)
+- **Flexible Transports**: Support for Zeptomail, AWS SES, and related providers
 - **YAML Configuration**: Configuration files with environment variable substitution
 - **Template Validation**: Templates are validated at startup with JSON Schema
 - **Email Validation**: Automatic validation of all email addresses (from, to, cc, bcc, replyTo)
-- **Authentication**: API key or HMAC request signing authentication
-- **Security Features**: Optional IP allowlisting, rate limiting, HTTPS enforcement
+- **Authentication**: API key or HMAC request signing
 - **Docker Ready**: Slim runtime image; compile templates in your consumer Dockerfile (see [examples/mail-service](examples/mail-service))
 
 ## Table of Contents
@@ -57,18 +58,13 @@ auth:
   value: ${MAILER_API_KEY}
 
 accounts:
-  primary:
-    type: smtp
+  zeptomail:
+    type: zeptomail
     from: ${MAIL_FROM_EMAIL}
-    host: smtp.example.com
-    port: 587
-    secure: false
-    auth:
-      user: ${SMTP_USER}
-      pass: ${SMTP_PASSWORD}
+    apiKey: ${ZEPTOMAIL_API_KEY}
 
 defaults:
-  account: primary
+  account: zeptomail
   renderer: react-email
 ```
 
@@ -79,8 +75,7 @@ defaults:
 ```bash
 export MAILER_API_KEY=your-api-key
 export MAIL_FROM_EMAIL=noreply@example.com
-export SMTP_USER=your-email@example.com
-export SMTP_PASSWORD=your-password
+export ZEPTOMAIL_API_KEY=your-zeptomail-key
 ```
 
 **Note**: All environment variables are optional. You only need to set the variables that you reference in your `config.yaml` file. Variable names are user-defined - use whatever names you prefer in your config.
@@ -96,24 +91,26 @@ docker-compose up
 1. Install dependencies:
 
 ```bash
-bun install
+npm install
 ```
 
-2. Create `/data/config/config.yaml` and `/data/templates/` directory structure
+2. Copy `apps/mailer/.env.example` to `apps/mailer/.env` (points at [examples/mail-service](examples/mail-service) config and emails by default)
 
-3. Set environment variables (optional - only set the variables you reference in your `config.yaml` file)
+3. Set any provider secrets you reference in that config
 
 4. Run the server:
 
 ```bash
-bun run dev
+npm run dev --workspace=mailer
 ```
 
 The server will start on port 3000 (or the port specified by `PORT` environment variable).
 
+For a production-like Docker run with compiled templates, see [examples/mail-service](examples/mail-service).
+
 ## Shipping your own templates
 
-**Canonical guide:** [examples/mail-service](examples/mail-service) — mirrors a real production consumer layout.
+**Canonical guide:** [examples/mail-service](examples/mail-service) — bake your templates into a consumer image. Volume-mounting templates into Distroless is not supported.
 
 Authors keep editable source under `emails/` (`.tsx` / `.mjml` / `.html`) and preview with React Email. When ready to ship, the consumer Dockerfile compiles templates into the slim mailer image:
 
@@ -126,21 +123,30 @@ WORKDIR /work
 COPY --from=mailer /app/dist/compile-templates.mjs ./compile-templates.mjs
 RUN npm init -y && npm install esbuild mjml @react-email/components react react-dom
 COPY ./emails /templates-src
-RUN node ./compile-templates.mjs /templates-src /templates \
-  && ln -sfn /app/node_modules /templates/node_modules
+RUN node ./compile-templates.mjs /templates-src /app/templates
 
 FROM ${MAILER_IMAGE}
-COPY --from=compile /templates /templates
+COPY --from=compile /app/templates /app/templates
 COPY ./config/config.yaml /config/config.yaml
 ```
 
-| Source | Compiled artifact |
-|--------|-------------------|
-| `index.tsx` (React Email) | `index.mjs` (components inlined) |
-| `index.mjml` | `index.html` (`renderer` → `html`) |
-| `index.html` | copied as-is |
+Templates land under **`/app/templates`** so Node resolves `react` / `@react-email/render` from `/app/node_modules` without a symlink.
 
-Local API development (`npm run dev` in `apps/mailer`) still loads source `.tsx` / `.mjml` when `NODE_ENV=development`. Production expects precompiled artifacts.
+| Source                    | Compiled artifact                                      |
+| ------------------------- | ------------------------------------------------------ |
+| `index.tsx` (React Email) | `index.mjs` + `renderer: react-email` in template.yaml |
+| `index.mjml`              | `index.html` + `renderer: html`                        |
+| `index.html`              | copied as-is + `renderer: html`                        |
+
+### Development vs production templates
+
+| Environment          | How you run                                                       | What loads                                                              |
+| -------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Local API**        | `npm run dev` in `apps/mailer` (`NODE_ENV=development` + **tsx**) | Source `index.tsx` / `index.mjml` (set `TEMPLATES_DIR` / `CONFIG_PATH`) |
+| **Template preview** | `npm run dev` in your consumer (`email dev`)                      | React Email preview only — not the mailer API                           |
+| **Production image** | Distroless final stage                                            | **Compiled** `index.mjs` / `index.html` only                            |
+
+The Distroless runtime does **not** include `tsx`, `mjml`, or `@react-email/components`. Do not set `NODE_ENV=development` on the baked image expecting raw `.tsx` to work — compile at image build time instead. Distroless is for the **final** image only; compilation uses a normal Node stage.
 
 ## Configuration
 
@@ -159,7 +165,7 @@ auth:
   value: ${MAILER_API_KEY}
 ```
 
-**HMAC Request Signing (Recommended for public internet):**
+**HMAC Request Signing:**
 
 ```yaml
 auth:
@@ -167,21 +173,6 @@ auth:
   header: x-mailer-signature # Optional, defaults to 'x-mailer-signature'
   secret: ${MAILER_SIGNING_SECRET}
   tolerance: 300 # Timestamp tolerance in seconds (default: 300 = 5 minutes)
-
-# Optional: IP allowlisting
-ipAllowlist:
-  enabled: true
-  allowedIps:
-    - 192.168.1.0/24 # CIDR notation
-    - 10.0.0.1 # Single IP
-
-# Optional: Rate limiting (user-configurable limits, strongly recommend IP allowlisting if you want to use rate limiting)
-rateLimit:
-  enabled: true
-  maxRequests: 100 # User-defined based on their usage
-  windowMinutes: 1
-  maxRequestsPerHour: 1000 # User-defined based on their usage
-  windowHours: 1
 
 # Optional: Request validation settings
 requestValidation:
@@ -198,28 +189,20 @@ auth:
   tolerance: 300 # 5 minutes in seconds
 
 accounts:
-  primary:
-    type: smtp
-    from: ${MAIL_FROM_EMAIL} # Fallback 'from' address for this account
-    host: smtp.gmail.com
-    port: 587
-    secure: false
-    auth:
-      user: ${SMTP_USER}
-      pass: ${SMTP_PASSWORD}
+  zeptomail:
+    type: zeptomail
+    from: ${MAIL_FROM_EMAIL}
+    apiKey: ${ZEPTOMAIL_API_KEY}
 
   ses:
-    type: smtp
+    type: ses
     from: ${MAIL_FROM_EMAIL}
-    host: smtp.zeptomail.com
-    port: 587
-    secure: false
-    auth:
-      user: ${SMTP_USER}
-      pass: ${SMTP_PASSWORD}
+    region: ${AWS_REGION}
+    accessKeyId: ${AWS_ACCESS_KEY_ID}
+    secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
 
 defaults:
-  account: primary
+  account: zeptomail
   renderer: react-email
 
 # Optional: Request validation settings
@@ -247,57 +230,40 @@ auth:
 
 ### Account Types
 
-#### SMTP
+Supported providers: **Zeptomail** and **Amazon SES**.
+
+#### Zeptomail
 
 ```yaml
 accounts:
-  smtp-account:
-    type: smtp
-    from: noreply@example.com # Optional: fallback 'from' address
-    host: smtp.example.com
-    port: 587
-    secure: false # true for 465, false for other ports
-    auth:
-      user: ${SMTP_USER}
-      pass: ${SMTP_PASSWORD}
-    # Any other nodemailer SMTP options can be added here
-```
-
-#### Sendmail
-
-```yaml
-accounts:
-  sendmail-account:
-    type: sendmail
-    path: /usr/sbin/sendmail
-    # Any other nodemailer sendmail options
+  zeptomail:
+    type: zeptomail
+    from: noreply@example.com # Optional fallback 'from'
+    apiKey: ${ZEPTOMAIL_API_KEY}
+    bounceAddress: ${ZEPTOMAIL_BOUNCE_ADDRESS} # Optional
 ```
 
 #### Amazon SES
 
 ```yaml
 accounts:
-  ses-account:
+  ses:
     type: ses
+    from: noreply@example.com # Optional fallback 'from'
     region: us-east-1
-    # Any other nodemailer SES options
-```
-
-#### Stream
-
-```yaml
-accounts:
-  stream-account:
-    type: stream
-    # Any other nodemailer stream options
+    accessKeyId: ${AWS_ACCESS_KEY_ID}
+    secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
 ```
 
 ## Templates
 
-Templates are organized in directories under `/templates/`. Each template directory contains:
+**Source** (authoring): directories under your consumer `emails/` folder.
+**Runtime** (baked image): compiled artifacts under `/app/templates/` (default `TEMPLATES_DIR`).
+
+Each template directory contains:
 
 1. `template.yaml` - Template metadata and schema
-2. Template file - `index.tsx` (React Email), `index.mjml` (MJML), or `index.html` (HTML)
+2. Template file — source: `index.tsx` / `index.mjml` / `index.html`; production: `index.mjs` and/or `index.html`
 
 **Note**: Folders starting with underscore (e.g., `_components`, `_utils`) are ignored by the template loader. This is useful for component-based renderers like React Email that may need shared components or utilities. These folders won't be treated as templates.
 
@@ -306,7 +272,7 @@ Templates are organized in directories under `/templates/`. Each template direct
 ```yaml
 id: welcome
 renderer: react-email
-account: primary # Optional: default account for this template
+account: zeptomail # Optional: default account for this template
 from: ${TEMPLATE_FROM_EMAIL} # Optional: default 'from' address (supports env vars)
 schema:
   type: object
@@ -340,7 +306,7 @@ Template YAML files support environment variable substitution using the same syn
 ```yaml
 id: welcome
 renderer: react-email
-account: ${TEMPLATE_ACCOUNT:-primary}
+account: ${TEMPLATE_ACCOUNT:-zeptomail}
 from: ${TEMPLATE_FROM_EMAIL:-noreply@example.com}
 schema:
   # ...
@@ -350,7 +316,7 @@ schema:
 
 ### React Email Template (`index.tsx`)
 
-Production images compile `.tsx` with the automatic JSX runtime, so an explicit `import React` is optional (still fine if present). For local `NODE_ENV=development` loading of source `.tsx` without compiling, keep `import React from 'react'`.
+Production compile uses the automatic JSX runtime (`index.mjs`). Local `npm run dev` loads source `.tsx` via tsx when `NODE_ENV=development`.
 
 ```tsx
 import { Html, Head, Body, Container, Text } from '@react-email/components';
@@ -540,7 +506,7 @@ crypto.subtle
 ```json
 {
   "templateId": "welcome",
-  "account": "primary",
+  "account": "zeptomail",
   "payload": {
     "userName": "John",
     "appName": "MyApp"
@@ -569,8 +535,8 @@ crypto.subtle
   - `cc` (optional): CC recipient(s) - string or array of strings
   - `bcc` (optional): BCC recipient(s) - string or array of strings
   - `replyTo` (optional): Reply-to email address
-  - `attachments` (optional): Array of attachment objects (nodemailer format)
-  - Any other [nodemailer sendMail options](https://nodemailer.com/message/)
+  - `attachments` (optional): Array of attachment objects
+  - Provider-specific extras may be accepted depending on the account type
 
 **Note**: The `to` field accepts either a single email string or an array of email addresses for multiple recipients.
 
@@ -650,7 +616,7 @@ All email addresses are automatically validated before sending:
   - Account not found
 - `500` - Internal Server Error
   - Template rendering errors
-  - SMTP/transport errors
+  - Provider / transport errors
   - Other server errors
 
 ### Common Error Scenarios
@@ -698,69 +664,20 @@ All email addresses are automatically validated before sending:
 
 ## Security Features
 
+This service is intended for **private networks only**. Do not publish it to the public internet. Prefer network isolation (VPC, overlay network, cluster-internal Service) plus authentication below. If you need encryption or peer identity between internal services, terminate TLS or use **mTLS** at your ingress / service mesh — not in this application.
+
 ### Authentication
 
 The service supports two authentication methods:
 
-1. **API Key**: Simple string-based authentication (suitable for internal services)
-2. **HMAC Request Signing**: Cryptographic signature-based authentication (recommended for public internet)
+1. **API Key**: Simple shared-secret header (fine for trusted internal callers)
+2. **HMAC Request Signing**: Signed requests with timestamp tolerance (stronger integrity / replay protection)
 
 HMAC authentication provides:
 
 - Request integrity verification
 - Replay attack prevention (via timestamp tolerance)
 - No token storage required
-
-### IP Allowlisting (Optional)
-
-IP allowlisting restricts access to specific IP addresses or CIDR blocks. This is useful for server-to-server communication where you know the source IPs.
-
-**Configuration:**
-
-```yaml
-ipAllowlist:
-  enabled: true
-  allowedIps:
-    - 192.168.1.0/24 # CIDR notation (all IPs in subnet)
-    - 10.0.0.1 # Single IP address
-```
-
-**When to use:**
-
-- Server-to-server communication with known backend IPs
-- Additional layer of security beyond authentication
-- Can reduce the need for aggressive rate limiting
-
-### Rate Limiting (Optional)
-
-Rate limiting prevents abuse by limiting the number of requests per time window. **Strongly recommended to use IP allowlisting alongside rate limiting** for server-to-server communication.
-
-**Configuration:**
-
-```yaml
-rateLimit:
-  enabled: true
-  maxRequests: 100 # Maximum requests per window
-  windowMinutes: 1 # Time window in minutes
-  maxRequestsPerHour: 1000 # Maximum requests per hour
-  windowHours: 1 # Hourly window
-```
-
-**How it works:**
-
-- Tracks requests by IP address using a sliding window algorithm
-- Applies both per-minute and per-hour limits (if configured)
-- Returns `429 Too Many Requests` with `Retry-After` header when limit exceeded
-- Fully user-configurable - set limits based on your usage patterns
-
-**Recommendation:**
-
-- For server-to-server communication, use IP allowlisting to restrict access, then add rate limiting to protect against bugs, compromised servers, or enforce quotas
-- Rate limiting is optional and can be disabled entirely
-
-### HTTPS Enforcement
-
-HTTPS is enforced for all requests (except localhost for development). The service checks the `x-forwarded-proto` header from reverse proxies.
 
 ### Request Validation
 
@@ -805,16 +722,13 @@ IP addresses are detected in the following scenarios:
 - If using a reverse proxy, ensure it sets the `x-forwarded-for` header
 - Most production setups (nginx, AWS ALB, etc.) set this header automatically
 - Without a reverse proxy or proper headers, IP detection will fail
-- This affects rate limiting and IP allowlisting (they require IP detection)
 
 Special logging for:
 
 - Failed authentication attempts
-- Rate limit violations
-- IP allowlist rejections
 - Large requests (>100KB)
 - Slow requests:
-  - `/send` endpoint: >10 seconds (email sending via external SMTP typically takes 1-5 seconds)
+  - `/send` endpoint: >10 seconds (sending via external providers typically takes 1-5 seconds)
   - Other endpoints: >1 second
 
 **PII Handling:** Email addresses and payload content are not logged - only metadata (template ID, account ID, etc.) is recorded.
@@ -874,19 +788,19 @@ apps/mailer/
 **All environment variables are optional**, and you can name them whatever you want based on your `config.yaml` file. The only exceptions are:
 
 - `CONFIG_PATH` - Path to config file (default: `/config/config.yaml`)
-- `TEMPLATES_DIR` - Path to templates directory (default: `/templates`)
+- `TEMPLATES_DIR` - Path to templates directory (default: `/app/templates`)
 
-**Note**: Most users using Docker will never need to set `CONFIG_PATH` or `TEMPLATES_DIR` because they can simply mount their config and template directories to the default paths (`/config` and `/templates`) in the Docker container. These environment variables are primarily useful for local development or custom Docker setups where you mount volumes to different paths.
+**Note**: Baked consumer images use the defaults (`/config/config.yaml` and `/app/templates`). Override these only for local API development (e.g. point `TEMPLATES_DIR` at your `emails/` folder). Do not volume-mount templates into the Distroless runtime — bake a new image when templates change.
 
 **All other environment variables** are user-defined based on what you reference in your `config.yaml` using the `${VAR_NAME}` syntax. For example, if your config uses `${MY_CUSTOM_API_KEY}`, then you would set the `MY_CUSTOM_API_KEY` environment variable.
 
 **Common examples** (these names are just examples - use whatever names you prefer):
 
-- `${MAILER_API_KEY}` - API key for authentication (or `${API_KEY}`, `${AUTH_TOKEN}`, etc.)
-- `${MAIL_FROM_EMAIL}` - Default sender email address (or `${FROM_EMAIL}`, `${SENDER}`, etc.)
-- `${SMTP_USER}` - SMTP username (or `${EMAIL_USER}`, `${USERNAME}`, etc.)
-- `${SMTP_PASSWORD}` - SMTP password (or `${EMAIL_PASS}`, `${PASSWORD}`, etc.)
-- `PORT` - Server port (default: 3000) - Note: This is a special case used by the server, not referenced in config.yaml
+- `${MAILER_API_KEY}` / `${MAILER_SIGNING_SECRET}` - Auth credentials
+- `${MAIL_FROM_EMAIL}` - Default sender address
+- `${ZEPTOMAIL_API_KEY}` - Zeptomail API key
+- `${AWS_REGION}` / `${AWS_ACCESS_KEY_ID}` / `${AWS_SECRET_ACCESS_KEY}` - SES credentials
+- `PORT` - Server port (default: 3000) — used by the process, not via config.yaml substitution
 
 ### Running Tests
 
@@ -908,28 +822,17 @@ bun run lint
 docker build -t blockqueue/mailer:latest -f docker/mailer/Dockerfile.prod .
 ```
 
-The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.mjs`, and only `react` / `react-dom` / `@react-email/render`. It does **not** include `tsx`, `mjml`, or `@react-email/components`.
+The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.mjs`, and only the peers pinned in [`docker/mailer/package.runtime.json`](docker/mailer/package.runtime.json) (`react` / `react-dom` / `@react-email/render`). Runtime deps are installed on Debian (glibc) before copying into Distroless. It does **not** include `tsx`, `mjml`, or `@react-email/components`.
 
 (Chainguard’s public `node` image was evaluated; Distroless was smaller.)
 
+### Shipping templates
 
-### Shipping templates (recommended)
-
-Prefer baking compiled templates into a consumer image — see [examples/mail-service](examples/mail-service):
+Bake compiled templates into a consumer image — see [examples/mail-service](examples/mail-service):
 
 ```bash
 docker compose build bq-mailer-build
 docker compose up bq-example-mail-service
 ```
 
-### Running with precompiled template volumes
-
-If you mount `/templates` yourself, mount **compiled** output (`index.mjs` / `index.html`), and recreate the ESM resolve symlink:
-
-```bash
-docker run -p 3000:3000 \
-  -v $(pwd)/data/config:/config \
-  -v $(pwd)/data/templates-compiled:/templates \
-  blockqueue/mailer:latest
-# then inside the image (or in your Dockerfile): ln -sfn /app/node_modules /templates/node_modules
-```
+Template changes require a new image build. Volume mounts are not supported for Distroless.

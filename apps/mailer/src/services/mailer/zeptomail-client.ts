@@ -4,9 +4,6 @@ import type { ZeptomailAccountConfig } from '../../types/config';
 import type { EmailOptions, SendResult } from './base-client';
 import { EmailClient } from './base-client';
 
-/**
- * Zeptomail API response types
- */
 interface ZeptomailSendResponse {
   data?: {
     code?: string;
@@ -18,9 +15,7 @@ interface ZeptomailSendResponse {
   object?: string;
 }
 
-/**
- * Zeptomail email client implementation
- */
+/** Zeptomail email client */
 export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
   private readonly client: AxiosInstance;
   private readonly fromAddress: string;
@@ -47,9 +42,6 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
     return value ? (Array.isArray(value) ? value : [value]) : undefined;
   }
 
-  /**
-   * Validate that all required Zeptomail credentials are present
-   */
   static validateCredentials(config: ZeptomailAccountConfig): void {
     const apiKey = config.apiKey;
     if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
@@ -57,9 +49,6 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
     }
   }
 
-  /**
-   * Send an email via Zeptomail API
-   */
   async send(options: EmailOptions): Promise<SendResult> {
     try {
       const toAddresses = this.toArray(options.to);
@@ -102,14 +91,12 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
         payload,
       );
 
-      // Zeptomail returns request_id as the message identifier
-      // If axios request succeeded, email was sent
+      // Zeptomail uses request_id as the message identifier
       return {
         messageId: resp.data.request_id ?? '',
         success: true,
       };
     } catch (error) {
-      // Handle axios errors
       if (axios.isAxiosError(error)) {
         const errorData = error.response?.data as
           | { error?: { message?: string } }
@@ -120,7 +107,6 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
           error.message;
         throw new Error(`Zeptomail API error: ${errorMessage}`);
       }
-      // Re-throw our own errors without wrapping
       if (error instanceof Error) {
         throw error;
       }
