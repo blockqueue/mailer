@@ -29,12 +29,21 @@ export async function sendEmailController(
       );
     }
 
-    if (typeof body.payload !== 'object') {
+    if (
+      body.payload === null ||
+      typeof body.payload !== 'object' ||
+      Array.isArray(body.payload)
+    ) {
       return c.json(
-        { success: false, message: 'Missing required field: payload' },
+        {
+          success: false,
+          message: 'Missing or invalid field: payload (must be an object)',
+        },
         400,
       );
     }
+
+    const payload = body.payload as Record<string, unknown>;
 
     const template = templateLoader.getTemplate(body.templateId);
     if (!template) {
@@ -47,7 +56,7 @@ export async function sendEmailController(
       );
     }
 
-    const validation = validatePayload(template.schema, body.payload);
+    const validation = validatePayload(template.schema, payload);
     if (!validation.valid) {
       return c.json(
         {
@@ -91,7 +100,7 @@ export async function sendEmailController(
     }
     const renderer = getRenderer(rendererType);
 
-    const html = await renderer.render(template.templatePath, body.payload);
+    const html = await renderer.render(template.templatePath, payload);
 
     const client = createEmailClient(accountConfig);
 

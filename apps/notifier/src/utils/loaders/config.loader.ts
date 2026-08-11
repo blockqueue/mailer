@@ -78,6 +78,10 @@ export function loadConfig(): GlobalConfig {
     for (const accountId of Object.keys(config.sms.accounts)) {
       const accountConfig = config.sms.accounts[accountId];
       try {
+        const type = (accountConfig as { type: string }).type;
+        if (type !== 'termii') {
+          throw new Error(`Unknown SMS account type: ${type}`);
+        }
         TermiiSmsClient.validateCredentials(accountConfig);
       } catch (error) {
         const errorMessage =

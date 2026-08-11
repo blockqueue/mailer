@@ -1,7 +1,7 @@
 export interface SendEmailRequest {
   templateId: string;
   account?: string;
-  payload: Record<string, unknown>;
+  payload: unknown;
   sendMailOptions?: {
     from?: string;
     to?: string | string[];

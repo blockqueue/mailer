@@ -284,13 +284,13 @@ sms:
       type: termii
       apiKey: ${TERMII_API_KEY}
       from: MyApp                 # sender ID
-      version: v3                 # v3 | v4 (host); overridden by baseUrl if set
+      version: v3                 # v3 | v4
       # baseUrl: https://v3.api.termii.com
       channel: dnd                # dnd | generic
       messageType: plain          # plain | unicode
 ```
 
-`version` selects `https://v3.api.termii.com` or `https://v4.api.termii.com`. Per-request `sendOptions.version` overrides the account default. Explicit `baseUrl` always wins.
+`version` selects `https://v3.api.termii.com` or `https://v4.api.termii.com`. Per-request `sendOptions.version` overrides the account default. If the account sets `baseUrl`, that URL is used and `sendOptions.version` is rejected (400).
 
 ## Templates
 
@@ -621,7 +621,7 @@ Send an SMS via a configured SMS account (Termii). No templates.
 - `body` (required): Message text
 - `account` (optional): SMS account id; falls back to `sms.defaults.account`
 - `sendOptions` (optional):
-  - `version` (`v3` | `v4`): Termii API host; overrides account `version` (ignored if account `baseUrl` is set)
+  - `version` (`v3` | `v4`): Termii API host; overrides account `version` (rejected if account `baseUrl` is set)
   - `from`: sender ID override
   - `channel`: `dnd` | `generic`
   - `messageType`: `plain` | `unicode`
