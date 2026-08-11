@@ -12,7 +12,7 @@ RUN npm init -y \
     @react-email/components@0.5.7 \
     react@19.2.3 \
     react-dom@19.2.3
-COPY ./emails /templates-src
+COPY ./templates /templates-src
 RUN node ./compile-templates.mjs /templates-src /app/templates
 
 FROM ${NOTIFIER_IMAGE}
