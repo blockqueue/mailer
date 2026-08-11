@@ -1,5 +1,4 @@
 import { Link, Text } from '@react-email/components';
-import React from 'react';
 import * as config from '../_utility/config';
 
 export function CompanyFooter() {

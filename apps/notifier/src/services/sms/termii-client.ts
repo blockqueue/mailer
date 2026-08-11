@@ -94,7 +94,10 @@ export class TermiiSmsClient extends SmsClient {
         400,
       );
     }
-    if (options.messageType && !ALLOWED_MESSAGE_TYPES.has(options.messageType)) {
+    if (
+      options.messageType &&
+      !ALLOWED_MESSAGE_TYPES.has(options.messageType)
+    ) {
       throw new SmsRequestError(
         'sendOptions.messageType must be "plain" or "unicode"',
         400,

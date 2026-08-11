@@ -61,7 +61,9 @@ export function loadConfig(): GlobalConfig {
             break;
           default: {
             const _exhaustive: never = accountConfig;
-            throw new Error(`Unknown email account type: ${String(_exhaustive)}`);
+            throw new Error(
+              `Unknown email account type: ${String(_exhaustive)}`,
+            );
           }
         }
       } catch (error) {

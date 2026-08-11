@@ -90,13 +90,9 @@ export async function sendEmailController(
       );
     }
 
-    const rendererType =
-      template.renderer ?? config.email.defaults?.renderer;
+    const rendererType = template.renderer ?? config.email.defaults?.renderer;
     if (!rendererType) {
-      return c.json(
-        { success: false, message: 'No renderer specified' },
-        400,
-      );
+      return c.json({ success: false, message: 'No renderer specified' }, 400);
     }
     const renderer = getRenderer(rendererType);
 

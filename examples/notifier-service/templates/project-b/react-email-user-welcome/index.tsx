@@ -22,11 +22,7 @@ interface WelcomeEmailProps {
 }
 
 export function Email(props: WelcomeEmailProps) {
-  const {
-    userName,
-    appName,
-    ctaUrl = config.blockQueueDomain,
-  } = props;
+  const { userName, appName, ctaUrl = config.blockQueueDomain } = props;
 
   return (
     <Html>

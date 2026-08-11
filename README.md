@@ -150,11 +150,11 @@ Templates land under **`/app/templates`** so Node resolves `react` / `@react-ema
 
 ### Development vs production templates
 
-| Environment          | How you run                                                       | What loads                                                              |
-| -------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Environment          | How you run                                                         | What loads                                                              |
+| -------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | **Local API**        | `npm run dev` in `apps/notifier` (`NODE_ENV=development` + **tsx**) | Source `index.tsx` / `index.mjml` (set `TEMPLATES_DIR` / `CONFIG_PATH`) |
-| **Template preview** | `npm run dev` in your consumer (`email dev`)                      | React Email preview only — not the notifier API                           |
-| **Production image** | Distroless final stage                                            | **Compiled** `index.mjs` / `index.html` only                            |
+| **Template preview** | `npm run dev` in your consumer (`email dev`)                        | React Email preview only — not the notifier API                         |
+| **Production image** | Distroless final stage                                              | **Compiled** `index.mjs` / `index.html` only                            |
 
 The Distroless runtime does **not** include `tsx`, `mjml`, or `@react-email/components`. Do not set `NODE_ENV=development` on the baked image expecting raw `.tsx` to work — compile at image build time instead. Distroless is for the **final** image only; compilation uses a normal Node stage.
 
@@ -283,11 +283,11 @@ sms:
     termii:
       type: termii
       apiKey: ${TERMII_API_KEY}
-      from: MyApp                 # sender ID
-      version: v3                 # v3 | v4
+      from: MyApp # sender ID
+      version: v3 # v3 | v4
       # baseUrl: https://v3.api.termii.com
-      channel: dnd                # dnd | generic
-      messageType: plain          # plain | unicode
+      channel: dnd # dnd | generic
+      messageType: plain # plain | unicode
 ```
 
 `version` selects `https://v3.api.termii.com` or `https://v4.api.termii.com`. Per-request `sendOptions.version` overrides the account default. If the account sets `baseUrl`, that URL is used and `sendOptions.version` is rejected (400).

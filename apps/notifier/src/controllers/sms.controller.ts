@@ -112,10 +112,7 @@ export async function sendSmsController(
       );
     }
 
-    if (
-      accountConfig.baseUrl?.trim() &&
-      body.sendOptions?.version
-    ) {
+    if (accountConfig.baseUrl?.trim() && body.sendOptions?.version) {
       return c.json(
         {
           success: false,
@@ -137,10 +134,7 @@ export async function sendSmsController(
     return c.json(response);
   } catch (error: unknown) {
     if (error instanceof SmsRequestError) {
-      return c.json(
-        { success: false, message: error.message },
-        error.status,
-      );
+      return c.json({ success: false, message: error.message }, error.status);
     }
 
     const errorMessage =
