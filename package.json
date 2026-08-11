@@ -7,8 +7,8 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "remove:apps": "(cd apps/web && rm -rf node_modules .next .turbo) && (cd apps/docs && rm -rf node_modules .next .turbo) && (cd apps/mailer && rm -rf node_modules .turbo dist)",
-    "remove:examples": "(cd examples/mail-service && rm -rf node_modules)",
+    "remove:apps": "(cd apps/web && rm -rf node_modules .next .turbo) && (cd apps/docs && rm -rf node_modules .next .turbo) && (cd apps/notifier && rm -rf node_modules .turbo dist)",
+    "remove:examples": "(cd examples/notifier-service && rm -rf node_modules)",
     "remove:packages": "(cd packages/eslint-config && rm -rf node_modules) && (cd packages/ui && rm -rf node_modules .turbo)",
     "reinstall": "npm run remove:packages && npm run remove:apps && npm run remove:examples && rm -rf node_modules && npm i"
   },
