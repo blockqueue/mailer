@@ -4,7 +4,7 @@ Canonical example of shipping your own templates on top of the BlockQueue notifi
 
 ## Workflow
 
-1. **Edit** source templates under `emails/` (`.tsx`, `.mjml`, or `.html`) — nested folders are fine; each `template.yaml` must have a unique `id`
+1. **Edit** source templates under `templates/` (`.tsx`, `.mjml`, or `.html`) — nested folders are fine; each `template.yaml` must have a unique `id`
 2. **Preview** React Email with `npm run dev` (`.tsx` only)
 3. **Build** a consumer image — Dockerfile compiles templates into `/app/templates` on the slim Distroless runtime
 
@@ -14,10 +14,13 @@ Production always bakes compiled artifacts; volume mounts are not supported.
 
 ```
 examples/notifier-service/
-├── emails/                      # Source templates (editable; nested OK)
-│   ├── welcome-react-email/
-│   ├── welcome-mjml-email/
-│   └── welcome-html-email/
+├── templates/                   # Source templates (nested OK; unique ids)
+│   ├── project-a/
+│   │   ├── html-user-welcome/
+│   │   └── mjml-user-welcome/
+│   └── project-b/
+│       ├── mjml-login-otp/
+│       └── react-email-user-welcome/
 ├── config/
 │   └── config.yaml              # auth + email + sms channels
 ├── scripts/

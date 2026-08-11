@@ -1,0 +1,19 @@
+id: mjml-user-welcome
+renderer: mjml
+account: ses
+schema:
+  type: object
+  required:
+    - userName
+    - appName
+    - ctaUrl
+    - supportEmail
+  properties:
+    userName:
+      type: string
+    appName:
+      type: string
+    ctaUrl:
+      type: string
+    supportEmail:
+      type: string

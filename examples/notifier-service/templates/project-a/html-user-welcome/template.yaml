@@ -1,12 +1,15 @@
-id: welcome-react-email
-renderer: react-email
+id: html-user-welcome
+renderer: html
 schema:
   type: object
   required:
     - userName
     - appName
+    - supportEmail
   properties:
     userName:
       type: string
     appName:
+      type: string
+    supportEmail:
       type: string

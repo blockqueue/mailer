@@ -1,5 +1,5 @@
-id: welcome-html-email
-renderer: html
+id: react-email-user-welcome
+renderer: react-email
 schema:
   type: object
   required:
@@ -9,4 +9,6 @@ schema:
     userName:
       type: string
     appName:
+      type: string
+    ctaUrl:
       type: string

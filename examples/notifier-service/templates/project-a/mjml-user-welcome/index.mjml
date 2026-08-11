@@ -1,0 +1,48 @@
+<mjml>
+  <mj-head>
+    <mj-title>Welcome to {{appName}}</mj-title>
+    <mj-preview>Your {{appName}} account is ready, {{userName}}.</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" />
+      <mj-text color="#18181b" font-size="16px" line-height="1.6" />
+      <mj-button background-color="#18181b" color="#ffffff" border-radius="6px" font-weight="600" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f4f4f5">
+    <mj-section background-color="#18181b" padding="24px 32px">
+      <mj-column>
+        <mj-text color="#ffffff" font-size="18px" font-weight="600" padding="0">
+          {{appName}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="32px">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="600" padding="0 0 12px">
+          Welcome, {{userName}}
+        </mj-text>
+        <mj-text color="#3f3f46" padding="0 0 16px">
+          Thanks for joining {{appName}}. Your account is set up — open the app
+          to finish onboarding and explore what’s available to you.
+        </mj-text>
+        <mj-button href="{{ctaUrl}}" padding="8px 0 24px" align="left">
+          Get started
+        </mj-button>
+        <mj-text color="#71717a" font-size="14px" padding="0">
+          Questions? Email
+          <a href="mailto:{{supportEmail}}" style="color: #2563eb; text-decoration: none">{{supportEmail}}</a>.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0 32px 28px">
+      <mj-column>
+        <mj-divider border-color="#e4e4e7" border-width="1px" padding="0 0 16px" />
+        <mj-text color="#a1a1aa" font-size="12px" padding="0">
+          You received this email because an account was created on {{appName}}.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

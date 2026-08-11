@@ -8,6 +8,7 @@ type SocialLinksProps = {
   facebook?: string;
   twitter?: string;
 };
+
 export function SocialLinks(props: SocialLinksProps) {
   const socialLinks = [
     {
@@ -30,7 +31,12 @@ export function SocialLinks(props: SocialLinksProps) {
       href: props.twitter,
       icon: `${config.blockQueueDomain}/images/mailer/twitter.png`,
     },
-  ];
+  ].filter((link) => Boolean(link.href));
+
+  if (socialLinks.length === 0) {
+    return null;
+  }
+
   return (
     <div className="flex items-center justify-center">
       {socialLinks.map((link) => (

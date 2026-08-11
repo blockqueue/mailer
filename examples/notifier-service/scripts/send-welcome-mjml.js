@@ -7,10 +7,12 @@ const SECRET =
 const TO_EMAIL = process.env.TEST_TO_EMAIL || 'email@example.com';
 
 const body = {
-  templateId: 'welcome-mjml-email',
+  templateId: 'mjml-user-welcome',
   payload: {
     userName: 'Test User',
-    appName: 'Blockqueue Notifier',
+    appName: 'BlockQueue',
+    ctaUrl: 'https://blockqueue.io',
+    supportEmail: 'support@blockqueue.io',
   },
   sendMailOptions: {
     to: TO_EMAIL,

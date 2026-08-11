@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "NODE_ENV=development email dev -p 10001 --dir=emails",
+    "dev": "NODE_ENV=development email dev -p 10001 --dir=templates",
     "export": "email export"
   },
   "dependencies": {
