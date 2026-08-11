@@ -1,13 +1,10 @@
-# Compiles emails/ into the slim mailer image. Preview locally with `npm run dev`.
-# Build: docker build --build-arg MAILER_IMAGE=blockqueue/mailer:latest .
+ARG NOTIFIER_IMAGE=ghcr.io/blockqueue/notifier:latest
 
-ARG MAILER_IMAGE=ghcr.io/blockqueue/mailer:latest
-
-FROM ${MAILER_IMAGE} AS mailer
+FROM ${NOTIFIER_IMAGE} AS notifier
 
 FROM node:24-alpine AS compile
 WORKDIR /work
-COPY --from=mailer /app/dist/compile-templates.mjs ./compile-templates.mjs
+COPY --from=notifier /app/dist/compile-templates.mjs ./compile-templates.mjs
 RUN npm init -y \
   && npm install \
     esbuild@0.27.2 \
@@ -18,6 +15,6 @@ RUN npm init -y \
 COPY ./emails /templates-src
 RUN node ./compile-templates.mjs /templates-src /app/templates
 
-FROM ${MAILER_IMAGE}
+FROM ${NOTIFIER_IMAGE}
 COPY --from=compile /app/templates /app/templates
 COPY ./config/config.yaml /config/config.yaml

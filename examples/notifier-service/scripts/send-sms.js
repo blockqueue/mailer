@@ -1,26 +1,19 @@
-/**
- * Send a test email via welcome-mjml-email (mail-service on :3000).
- * Usage: MAILER_SIGNING_SECRET=… node examples/mail-service/scripts/send-welcome-mjml.js
- * Optional: MAILER_BASE_URL, TEST_TO_EMAIL
- */
-
 const crypto = require('crypto');
 
-const BASE_URL = process.env.MAILER_BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.NOTIFIER_BASE_URL || 'http://localhost:3000';
 const SECRET =
-  process.env.MAILER_SIGNING_SECRET ||
+  process.env.NOTIFIER_SIGNING_SECRET ||
   'wefeqfdwfwrfqfweq9343rrwfeafeqr42r432ef';
-const TO_EMAIL = process.env.TEST_TO_EMAIL || 'email@example.com';
+const TO = process.env.TERMII_TO || '23490126727';
+const VERSION = process.env.TERMII_API_VERSION || 'v3';
 
 const body = {
-  templateId: 'welcome-mjml-email',
-  payload: {
-    userName: 'Test User',
-    appName: 'Blockqueue Mailer',
-  },
-  sendMailOptions: {
-    to: TO_EMAIL,
-    subject: 'Welcome - test from script',
+  to: TO,
+  body: 'Hello from BlockQueue Notifier',
+  sendOptions: {
+    version: VERSION,
+    channel: 'dnd',
+    messageType: 'plain',
   },
 };
 
@@ -33,24 +26,19 @@ function computeSignature(payload, secret) {
     .createHmac('sha512', secret)
     .update(toSign)
     .digest('hex');
-  return { timestamp, signature: `t=${timestamp},v1=${signature}` };
+  return { signature: `t=${timestamp},v1=${signature}` };
 }
 
 async function main() {
-  if (!SECRET) {
-    console.error('Error: MAILER_SIGNING_SECRET is required');
-    process.exit(1);
-  }
-
   const payloadStr = JSON.stringify(body);
   const { signature } = computeSignature(payloadStr, SECRET);
 
-  const url = `${BASE_URL.replace(/\/$/, '')}/send`;
+  const url = `${BASE_URL.replace(/\/$/, '')}/sms/send`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-mailer-signature': signature,
+      'x-notifier-signature': signature,
     },
     body: payloadStr,
   });
