@@ -57,7 +57,8 @@ export function substituteTemplateVars(
   content: string,
   payload: Record<string, unknown>,
 ): string {
-  return content.replace(/\{\{(\w+)\}\}/g, (_match, varName: string) => {
+  return content.replace(/\{\{(\w+)\}\}/g, (matched) => {
+    const varName = matched.slice(2, -2);
     const value = payload[varName];
     if (value === undefined || value === null) {
       throw new EmailRequestError(

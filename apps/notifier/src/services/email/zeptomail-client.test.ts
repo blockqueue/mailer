@@ -4,13 +4,15 @@ const { post, create } = vi.hoisted(() => {
   const post = vi.fn();
   return {
     post,
-    create: vi.fn(() => ({ post })),
+    create: vi.fn<(config?: unknown) => { post: typeof post }>(() => ({
+      post,
+    })),
   };
 });
 
 vi.mock('axios', () => ({
   default: {
-    create: (...args: unknown[]) => create(...args),
+    create: (config?: unknown) => create(config),
     isAxiosError: (error: unknown) =>
       Boolean(
         error &&

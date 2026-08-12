@@ -11,7 +11,7 @@ describe('validateAttachments', () => {
   });
 
   it('rejects too many attachments', () => {
-    const attachments = Array.from({ length: 11 }, (_, i) => ({
+    const attachments = [...Array(11).keys()].map((i) => ({
       filename: `file-${String(i)}.pdf`,
       contentType: pdf,
       content: smallPdf,

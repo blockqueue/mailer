@@ -9,10 +9,9 @@
     "moduleResolution": "bundler",
     "declaration": false,
     "sourceMap": false,
-    "outDir": "./dist",
-    "types": ["node"],
-    "rootDir": "./src"
+    "noEmit": true,
+    "types": ["node"]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

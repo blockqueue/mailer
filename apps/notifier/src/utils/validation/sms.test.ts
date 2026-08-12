@@ -24,9 +24,8 @@ describe('validateSmsRequest', () => {
   });
 
   it('rejects more than 100 recipients', () => {
-    const to = Array.from(
-      { length: 101 },
-      (_, i) => `23490126${String(i).padStart(3, '0')}`,
+    const to = [...Array(101).keys()].map(
+      (i) => `23490126${String(i).padStart(3, '0')}`,
     );
     expect(() => validateSmsRequest({ to, body: 'Hello' })).toThrow(
       /at most 100 recipients/,
