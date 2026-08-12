@@ -3,6 +3,7 @@ import { SesEmailClient } from '../../services/email/ses-client';
 import { ZeptomailEmailClient } from '../../services/email/zeptomail-client';
 import { TermiiSmsClient } from '../../services/sms/termii-client';
 import type { GlobalConfig } from '../../types/config';
+import { getErrorMessage } from '../errors/error-details';
 import { loadYamlWithEnv } from './yaml.loader';
 
 const CONFIG_PATH = process.env.CONFIG_PATH ?? '/config/config.yaml';
@@ -66,10 +67,8 @@ export function loadConfig(): GlobalConfig {
           }
         }
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
         throw new Error(
-          `Email account "${accountId}" validation failed: ${errorMessage}`,
+          `Email account "${accountId}" validation failed: ${getErrorMessage(error)}`,
         );
       }
     }
@@ -85,10 +84,8 @@ export function loadConfig(): GlobalConfig {
         }
         TermiiSmsClient.validateCredentials(accountConfig);
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
         throw new Error(
-          `SMS account "${accountId}" validation failed: ${errorMessage}`,
+          `SMS account "${accountId}" validation failed: ${getErrorMessage(error)}`,
         );
       }
     }

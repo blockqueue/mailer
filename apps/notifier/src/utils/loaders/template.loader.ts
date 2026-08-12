@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { TemplateConfig } from '../../types/template';
+import { getErrorLogFields, getErrorMessage } from '../errors/error-details';
 import { logger } from '../logger';
 import { loadYamlWithEnv } from './yaml.loader';
 
@@ -89,16 +90,13 @@ export class TemplateLoader {
         this.templates.set(templateId, templateConfig);
         logger.info({ templateId, yamlPath }, 'Loaded template');
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        const errorStack = error instanceof Error ? error.stack : undefined;
+        const errorMessage = getErrorMessage(error, String(error));
         failures.push({ templateId, error: errorMessage });
         logger.error(
           {
             templateId,
             yamlPath,
-            error: errorMessage,
-            ...(errorStack && { stack: errorStack }),
+            ...getErrorLogFields(error),
           },
           'Failed to load template',
         );

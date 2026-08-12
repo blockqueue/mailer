@@ -20,9 +20,7 @@ export function getRenderer(type: RendererType): Renderer {
     case 'html':
       return new HtmlRenderer();
     default: {
-      throw new Error(
-        `Unknown renderer type: ${String(type satisfies never)}`,
-      );
+      throw new Error(`Unknown renderer type: ${String(type satisfies never)}`);
     }
   }
 }

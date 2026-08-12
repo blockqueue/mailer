@@ -12,13 +12,9 @@ function substituteEnvVars(value: string): string {
     const expression = match[1];
     const separatorIndex = expression.indexOf(':-');
     const varName =
-      separatorIndex === -1
-        ? expression
-        : expression.slice(0, separatorIndex);
+      separatorIndex === -1 ? expression : expression.slice(0, separatorIndex);
     const hasDefault = separatorIndex !== -1;
-    const defaultValue = hasDefault
-      ? expression.slice(separatorIndex + 2)
-      : '';
+    const defaultValue = hasDefault ? expression.slice(separatorIndex + 2) : '';
     const envValue = process.env[varName];
 
     if (envValue !== undefined && envValue !== '') {

@@ -1,7 +1,8 @@
 import type { TermiiAccountConfig } from '../../types/config';
+import { getErrorMessage } from '../../utils/errors/error-details';
+import { SmsRequestError } from '../../utils/errors/request-error';
 import type { SmsOptions, SmsSendResult } from './base-client';
 import { SmsClient } from './base-client';
-import { SmsRequestError } from './errors';
 
 const TERMII_HOSTS = {
   v3: 'https://v3.api.termii.com',
@@ -18,7 +19,15 @@ function isValidE164LikePhone(value: string): boolean {
     return false;
   }
   const digits = trimmed.startsWith('+') ? trimmed.slice(1) : trimmed;
-  return /^\d{7,15}$/.test(digits);
+  if (digits.length < 7 || digits.length > 15) {
+    return false;
+  }
+  for (const ch of digits) {
+    if (ch < '0' || ch > '9') {
+      return false;
+    }
+  }
+  return true;
 }
 
 interface TermiiSendResponse {
@@ -34,7 +43,8 @@ function resolveBaseUrl(
   versionOverride?: 'v3' | 'v4',
 ): string {
   if (account.baseUrl && account.baseUrl.trim().length > 0) {
-    return account.baseUrl.replace(/\/$/, '');
+    const baseUrl = account.baseUrl.trim();
+    return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   }
   const version = versionOverride ?? account.version ?? 'v3';
   return TERMII_HOSTS[version];
@@ -154,7 +164,7 @@ export class TermiiSmsClient extends SmsClient {
         body: JSON.stringify(payload),
       });
     } catch (error: unknown) {
-      const detail = error instanceof Error ? error.message : 'Unknown error';
+      const detail = getErrorMessage(error);
       throw new SmsRequestError(`Termii request failed: ${detail}`, 502);
     }
 

@@ -1,6 +1,6 @@
 import type { Attachment } from '../../services/email/base-client';
-import { EmailRequestError } from '../../services/email/errors';
 import type { RequestValidationConfig } from '../../types/config';
+import { EmailRequestError } from '../../utils/errors/request-error';
 
 const DEFAULT_MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 const DEFAULT_MAX_ATTACHMENTS = 10;

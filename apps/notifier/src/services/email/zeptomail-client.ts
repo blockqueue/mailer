@@ -1,10 +1,11 @@
 import type { AxiosInstance } from 'axios';
 import axios from 'axios';
 import type { ZeptomailAccountConfig } from '../../types/config';
+import { EmailRequestError } from '../../utils/errors/request-error';
 import { parseEmailAddress } from '../../utils/parseEmailAddress';
+import { toArray } from '../../utils/to-array';
 import type { EmailOptions, SendResult } from './base-client';
 import { EmailClient } from './base-client';
-import { EmailRequestError } from './errors';
 
 interface ZeptomailSendResponse {
   data?: {
@@ -39,10 +40,6 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
     this.fromAddress = config.from ?? '';
   }
 
-  private toArray(value: string | string[] | undefined): string[] | undefined {
-    return value ? (Array.isArray(value) ? value : [value]) : undefined;
-  }
-
   static validateCredentials(config: ZeptomailAccountConfig): void {
     const apiKey = config.apiKey;
     if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
@@ -52,7 +49,7 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
 
   async send(options: EmailOptions): Promise<SendResult> {
     try {
-      const toAddresses = this.toArray(options.to);
+      const toAddresses = toArray(options.to);
       if (!toAddresses || toAddresses.length === 0) {
         throw new Error('At least one recipient is required');
       }
@@ -69,8 +66,8 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
         parsedFrom.name ??
         parsedFrom.address;
 
-      const ccAddresses = this.toArray(options.cc);
-      const bccAddresses = this.toArray(options.bcc);
+      const ccAddresses = toArray(options.cc);
+      const bccAddresses = toArray(options.bcc);
 
       const mapRecipient = (email: string) => ({
         email_address: {

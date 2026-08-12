@@ -9,6 +9,8 @@ import { authMiddleware } from './middleware/auth';
 import { requestValidationMiddleware } from './middleware/requestValidation';
 import type { AppEnv } from './types/hono';
 import type { SendEmailRequest, SendSmsRequest } from './types/request';
+import { getErrorMessage } from './utils/errors/error-details';
+import { requireParsedBody } from './utils/http/require-parsed-body';
 import { loadConfig } from './utils/loaders/config.loader';
 import { TemplateLoader } from './utils/loaders/template.loader';
 import { logger } from './utils/logger';
@@ -57,7 +59,7 @@ try {
     logger.info('Email channel not configured; skipping template load');
   }
 } catch (error: unknown) {
-  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  const errorMessage = getErrorMessage(error);
   logger.error({ error: errorMessage }, 'Failed to initialize');
   throw new Error(`Failed to initialize: ${errorMessage}`);
 }
@@ -80,25 +82,24 @@ app.get('/ready', (c) => {
 });
 
 app.post('/email/send', authMiddleware(config), async (c) => {
-  const body = c.get('parsedBody') as unknown as SendEmailRequest | undefined;
-  if (!body) {
-    return c.json(
-      { success: false, message: 'Request body not available' },
-      500,
-    );
+  const parsed = requireParsedBody(c);
+  if (!parsed.ok) {
+    return parsed.response;
   }
-  return sendEmailController(c, body, config, templateLoader);
+  return sendEmailController(
+    c,
+    parsed.value as SendEmailRequest,
+    config,
+    templateLoader,
+  );
 });
 
 app.post('/sms/send', authMiddleware(config), async (c) => {
-  const body = c.get('parsedBody') as unknown as SendSmsRequest | undefined;
-  if (!body) {
-    return c.json(
-      { success: false, message: 'Request body not available' },
-      500,
-    );
+  const parsed = requireParsedBody(c);
+  if (!parsed.ok) {
+    return parsed.response;
   }
-  return sendSmsController(c, body, config);
+  return sendSmsController(c, parsed.value as SendSmsRequest, config);
 });
 
 const port = Number(process.env.PORT ?? 3000);

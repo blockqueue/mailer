@@ -3,6 +3,8 @@ import yaml from 'js-yaml';
 import mjml2html from 'mjml';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { getErrorMessage } from '../utils/errors/error-details';
+import { findTemplateYamlFiles } from '../utils/loaders/template.loader';
 
 type RendererType = 'react-email' | 'mjml' | 'html';
 
@@ -36,33 +38,6 @@ function ensureDir(dir: string): void {
 function copyFile(src: string, dest: string): void {
   ensureDir(path.dirname(dest));
   fs.copyFileSync(src, dest);
-}
-
-function findTemplateYamlFiles(rootDir: string): string[] {
-  const results: string[] = [];
-
-  function walk(dir: string): void {
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      if (entry.name.startsWith('_')) {
-        continue;
-      }
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(fullPath);
-      } else if (entry.isFile() && entry.name === 'template.yaml') {
-        results.push(fullPath);
-      }
-    }
-  }
-
-  walk(rootDir);
-  return results.sort();
 }
 
 function loadTemplateYaml(filePath: string): TemplateYaml {
@@ -252,7 +227,7 @@ async function main(): Promise<void> {
       templateId = await compileTemplateYaml(yamlPath, inputDir, outputDir);
       successCount += 1;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error, String(error));
       failures.push({ templateId, error: message });
       console.error(`Failed ${templateId}: ${message}`);
     }
@@ -269,7 +244,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
+  console.error(getErrorMessage(error, String(error)));
   // eslint-disable-next-line n/no-process-exit -- CLI
   process.exit(1);
 });

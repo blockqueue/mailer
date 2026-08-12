@@ -3,9 +3,11 @@ import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses';
 import { addProxyToClient } from 'aws-sdk-v3-proxy';
 import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 import type { SesAccountConfig } from '../../types/config';
+import { getErrorMessage } from '../../utils/errors/error-details';
+import { EmailRequestError } from '../../utils/errors/request-error';
+import { toArray } from '../../utils/to-array';
 import type { EmailOptions, SendResult } from './base-client';
 import { EmailClient } from './base-client';
-import { EmailRequestError } from './errors';
 
 export class SesEmailClient extends EmailClient<SesAccountConfig> {
   private readonly client: SESClient;
@@ -22,10 +24,6 @@ export class SesEmailClient extends EmailClient<SesAccountConfig> {
     });
 
     this.client = addProxyToClient(client, { throwOnNoProxy: false });
-  }
-
-  private toArray(value: string | string[] | undefined): string[] | undefined {
-    return value ? (Array.isArray(value) ? value : [value]) : undefined;
   }
 
   static validateCredentials(config: SesAccountConfig): void {
@@ -53,9 +51,9 @@ export class SesEmailClient extends EmailClient<SesAccountConfig> {
 
   async send(options: EmailOptions): Promise<SendResult> {
     try {
-      const toAddresses = this.toArray(options.to);
-      const ccAddresses = this.toArray(options.cc);
-      const bccAddresses = this.toArray(options.bcc);
+      const toAddresses = toArray(options.to);
+      const ccAddresses = toArray(options.cc);
+      const bccAddresses = toArray(options.bcc);
 
       const mail = new MailComposer({
         from: options.from,
@@ -118,8 +116,7 @@ export class SesEmailClient extends EmailClient<SesAccountConfig> {
       if (error instanceof EmailRequestError) {
         throw error;
       }
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = getErrorMessage(error);
       throw new Error(`Failed to send email via SES: ${errorMessage}`);
     }
   }

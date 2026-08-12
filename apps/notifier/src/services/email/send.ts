@@ -4,11 +4,15 @@ import type {
 } from '../../types/config';
 import type { SendEmailRequest } from '../../types/request';
 import type { TemplateConfig } from '../../types/template';
+import {
+  getErrorLogFields,
+  getErrorMessage,
+} from '../../utils/errors/error-details';
+import { EmailRequestError } from '../../utils/errors/request-error';
 import { logger } from '../../utils/logger';
 import { validateAttachments } from '../../utils/validation/attachments';
 import { validateEmailAddresses } from '../../utils/validation/email';
 import type { EmailClient, EmailOptions } from './base-client';
-import { EmailRequestError } from './errors';
 
 const SEND_MAIL_OPTION_KEYS = new Set([
   'from',
@@ -52,7 +56,9 @@ function isValidMailFieldValue(key: string, value: unknown): boolean {
     if (Array.isArray(value)) {
       return (
         value.length > 0 &&
-        value.every((item) => typeof item === 'string' && item.trim().length > 0)
+        value.every(
+          (item) => typeof item === 'string' && item.trim().length > 0,
+        )
       );
     }
     return false;
@@ -151,7 +157,7 @@ function validateSendMailOptions(options: SendMailOptions): void {
     if (error instanceof EmailRequestError) {
       throw error;
     }
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = getErrorMessage(error);
     throw new EmailRequestError(message, 400);
   }
 }
@@ -207,16 +213,10 @@ export async function sendEmail(
       success: result.success,
     };
   } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    logger.error(
-      {
-        error: errorMessage,
-        ...(errorStack && { stack: errorStack }),
-      },
-      'Failed to send email',
+    logger.error(getErrorLogFields(error), 'Failed to send email');
+    throw new EmailRequestError(
+      `Failed to send email: ${getErrorMessage(error)}`,
+      502,
     );
-    throw new EmailRequestError(`Failed to send email: ${errorMessage}`, 502);
   }
 }

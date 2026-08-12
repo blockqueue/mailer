@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { getErrorMessage } from '../errors/error-details';
 import { jsonSchemaToZod } from '../schema/json-schema-to-zod';
 
 export function validatePayload(
@@ -19,7 +20,7 @@ export function validatePayload(
     }
     return {
       valid: false,
-      errors: [error instanceof Error ? error.message : 'Validation failed'],
+      errors: [getErrorMessage(error, 'Validation failed')],
     };
   }
 }
