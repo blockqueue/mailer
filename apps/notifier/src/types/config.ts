@@ -24,6 +24,7 @@ export interface SesAccountConfig {
 export interface ZeptomailAccountConfig {
   type: 'zeptomail';
   from?: string;
+  fromName?: string;
   apiKey: string;
   bounceAddress?: string;
 }
@@ -67,6 +68,8 @@ export interface SmsChannelConfig {
 
 export interface RequestValidationConfig {
   maxBodySize?: number;
+  maxAttachmentSize?: number;
+  allowedAttachmentMimeTypes?: string[];
 }
 
 export interface GlobalConfig {

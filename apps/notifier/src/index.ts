@@ -1,7 +1,6 @@
 import 'dotenv/config';
 
 import { serve } from '@hono/node-server';
-import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { sendEmailController } from './controllers/email.controller';
 import { sendSmsController } from './controllers/sms.controller';
@@ -9,18 +8,17 @@ import { auditLogMiddleware } from './middleware/auditLog';
 import { authMiddleware } from './middleware/auth';
 import { requestValidationMiddleware } from './middleware/requestValidation';
 import type { SendEmailRequest, SendSmsRequest } from './types/request';
+import type { AppEnv } from './types/hono';
 import { loadConfig } from './utils/loaders/config.loader';
 import { TemplateLoader } from './utils/loaders/template.loader';
 import { logger } from './utils/logger';
+import { validateAccountReferences } from './utils/validateAccountRefs';
 
-function getParsedBody(c: Context): unknown {
-  return (c as unknown as { get: (key: string) => unknown }).get('parsedBody');
-}
-
-const app = new Hono();
+const app = new Hono<AppEnv>();
 
 let config: ReturnType<typeof loadConfig>;
 let templateLoader: TemplateLoader;
+let emailConfigured = false;
 
 try {
   config = loadConfig();
@@ -28,7 +26,7 @@ try {
 
   templateLoader = new TemplateLoader(config.email?.defaults?.renderer);
 
-  const emailConfigured =
+  emailConfigured =
     Boolean(config.email?.accounts) &&
     Object.keys(config.email?.accounts ?? {}).length > 0;
 
@@ -45,7 +43,17 @@ try {
       );
       throw new Error('Failed to load email templates');
     }
+
+    if (loadResult.failureCount > 0) {
+      const summary = loadResult.failures
+        .map((f) => `${f.templateId}: ${f.error}`)
+        .join('; ');
+      throw new Error(`Failed to load email templates: ${summary}`);
+    }
+
+    validateAccountReferences(config, templateLoader);
   } else {
+    validateAccountReferences(config);
     logger.info('Email channel not configured; skipping template load');
   }
 } catch (error: unknown) {
@@ -61,8 +69,18 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok' });
 });
 
+app.get('/ready', (c) => {
+  if (emailConfigured && templateLoader.getTemplateIds().length === 0) {
+    return c.json(
+      { status: 'not_ready', message: 'No email templates loaded' },
+      503,
+    );
+  }
+  return c.json({ status: 'ok' });
+});
+
 app.post('/email/send', authMiddleware(config), async (c) => {
-  const body = getParsedBody(c) as SendEmailRequest | undefined;
+  const body = c.get('parsedBody') as unknown as SendEmailRequest | undefined;
   if (!body) {
     return c.json(
       { success: false, message: 'Request body not available' },
@@ -73,7 +91,7 @@ app.post('/email/send', authMiddleware(config), async (c) => {
 });
 
 app.post('/sms/send', authMiddleware(config), async (c) => {
-  const body = getParsedBody(c) as SendSmsRequest | undefined;
+  const body = c.get('parsedBody') as unknown as SendSmsRequest | undefined;
   if (!body) {
     return c.json(
       { success: false, message: 'Request body not available' },
@@ -83,7 +101,9 @@ app.post('/sms/send', authMiddleware(config), async (c) => {
   return sendSmsController(c, body, config);
 });
 
+const port = Number(process.env.PORT ?? 3000);
+logger.info({ port }, 'Notifier server listening');
 serve({
-  port: Number(process.env.PORT ?? 3000),
+  port,
   fetch: app.fetch,
 });

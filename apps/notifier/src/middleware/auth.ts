@@ -1,9 +1,18 @@
+import crypto from 'crypto';
 import type { Context, Next } from 'hono';
 import type { GlobalConfig } from '../types/config';
+import type { AppEnv } from '../types/hono';
 import { verifySignature } from '../utils/verifySignature';
 
+function secureCompareApiKey(provided: string, expected: string): boolean {
+  const providedBuf = Buffer.from(provided);
+  const expectedBuf = Buffer.from(expected);
+  if (providedBuf.length !== expectedBuf.length) return false;
+  return crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
+
 export function authMiddleware(config: GlobalConfig) {
-  return async (c: Context, next: Next) => {
+  return async (c: Context<AppEnv>, next: Next) => {
     if (config.auth.type === 'apiKey') {
       const headerName = (
         config.auth.header ?? 'x-notifier-api-key'
@@ -11,18 +20,18 @@ export function authMiddleware(config: GlobalConfig) {
       const apiKey = c.req.header(headerName);
 
       if (!apiKey) {
-        return c.json({ error: 'Missing API key' }, 401);
+        return c.json({ success: false, message: 'Missing API key' }, 401);
       }
 
-      if (apiKey !== config.auth.value) {
-        return c.json({ error: 'Invalid API key' }, 401);
+      if (!secureCompareApiKey(apiKey, config.auth.value)) {
+        return c.json({ success: false, message: 'Invalid API key' }, 401);
       }
     } else {
       const authType = (config.auth as { type: string }).type;
       if (authType !== 'hmac') {
         return c.json(
           {
-            error: 'Invalid authentication configuration',
+            success: false,
             message: `Unsupported auth type: ${authType}`,
           },
           500,
@@ -35,15 +44,16 @@ export function authMiddleware(config: GlobalConfig) {
       const signature = c.req.header(headerName);
 
       if (!signature) {
-        return c.json({ error: 'Missing signature' }, 401);
+        return c.json({ success: false, message: 'Missing signature' }, 401);
       }
 
-      const rawBody = (c as unknown as { get: (key: string) => unknown }).get(
-        'rawBody',
-      ) as string | undefined;
+      const rawBody = c.get('rawBody');
 
       if (!rawBody) {
-        return c.json({ error: 'Request body not available' }, 500);
+        return c.json(
+          { success: false, message: 'Request body not available' },
+          500,
+        );
       }
 
       const isValid = verifySignature({
@@ -54,7 +64,7 @@ export function authMiddleware(config: GlobalConfig) {
       });
 
       if (!isValid) {
-        return c.json({ error: 'Invalid signature' }, 401);
+        return c.json({ success: false, message: 'Invalid signature' }, 401);
       }
     }
 

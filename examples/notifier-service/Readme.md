@@ -58,14 +58,16 @@ docker build -t example-notifier-service \
 docker run --rm -p 3000:3000 \
   -e NOTIFIER_SIGNING_SECRET=dev-secret \
   -e MAIL_FROM_EMAIL=noreply@example.com \
-  -e ZEPTOMAIL_API_KEY= \
+  -e ZEPTOMAIL_API_KEY=dummy-zeptomail-api-key \
   -e AWS_REGION=eu-west-2 \
-  -e AWS_ACCESS_KEY_ID= \
-  -e AWS_SECRET_ACCESS_KEY= \
-  -e TERMII_API_KEY= \
+  -e AWS_ACCESS_KEY_ID=dummy-aws-access-key-id \
+  -e AWS_SECRET_ACCESS_KEY=dummy-aws-secret-access-key \
+  -e TERMII_API_KEY=dummy-termii-api-key \
   -e TERMII_FROM=MyApp \
   example-notifier-service
 ```
+
+Use real provider credentials to actually send mail/SMS. Empty env values fail config substitution when those accounts are referenced in `config.yaml`.
 
 ## API smoke
 

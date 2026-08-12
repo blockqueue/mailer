@@ -4,6 +4,8 @@ import type { ReactElement } from 'react';
 import { resolveTemplatePath } from '../../utils/template/template-path';
 import type { Renderer } from './index';
 
+const IS_DEV = process.env.NODE_ENV === 'development';
+
 type EmailComponent = (props: Record<string, unknown>) => ReactElement;
 interface EmailModule {
   default?: EmailComponent | { default: EmailComponent };
@@ -35,7 +37,8 @@ export class ReactEmailRenderer implements Renderer {
     payload: Record<string, unknown>,
   ): Promise<string> {
     const absolutePath = resolveTemplatePath(templatePath);
-    const moduleUrl = pathToFileURL(absolutePath).href;
+    const baseUrl = pathToFileURL(absolutePath).href;
+    const moduleUrl = IS_DEV ? `${baseUrl}?t=${String(Date.now())}` : baseUrl;
     const module = (await import(moduleUrl)) as EmailModule;
 
     const EmailComponent = resolveEmailComponent(module);

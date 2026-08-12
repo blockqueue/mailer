@@ -1,10 +1,23 @@
-import type { EmailAccountConfig } from '../../types/config';
+import type { EmailAccountConfig, RequestValidationConfig } from '../../types/config';
 import type { SendEmailRequest } from '../../types/request';
 import type { TemplateConfig } from '../../types/template';
 import { logger } from '../../utils/logger';
+import { validateAttachments } from '../../utils/validation/attachments';
 import { validateEmailAddresses } from '../../utils/validation/email';
 import type { EmailClient, EmailOptions } from './base-client';
 import { EmailRequestError } from './errors';
+
+const SEND_MAIL_OPTION_KEYS = new Set([
+  'from',
+  'to',
+  'subject',
+  'cc',
+  'bcc',
+  'replyTo',
+  'bounceAddress',
+  'attachments',
+  'fromName',
+]);
 
 interface SendMailOptions {
   from?: string;
@@ -40,13 +53,7 @@ function mergeSendMailOptions(
   const merged: SendMailOptions = {};
 
   for (const [key, value] of Object.entries(accountConfig)) {
-    if (
-      key === 'type' ||
-      key === 'region' ||
-      key === 'apiKey' ||
-      key === 'accessKeyId' ||
-      key === 'secretAccessKey'
-    ) {
+    if (!SEND_MAIL_OPTION_KEYS.has(key)) {
       continue;
     }
     if (isValidValue(value)) {
@@ -55,13 +62,7 @@ function mergeSendMailOptions(
   }
 
   for (const [key, value] of Object.entries(template)) {
-    if (
-      key === 'id' ||
-      key === 'renderer' ||
-      key === 'account' ||
-      key === 'schema' ||
-      key === 'templatePath'
-    ) {
+    if (!SEND_MAIL_OPTION_KEYS.has(key)) {
       continue;
     }
     if (isValidValue(value)) {
@@ -71,6 +72,9 @@ function mergeSendMailOptions(
 
   if (requestSendMailOptions) {
     for (const [key, value] of Object.entries(requestSendMailOptions)) {
+      if (!SEND_MAIL_OPTION_KEYS.has(key)) {
+        continue;
+      }
       if (isValidValue(value)) {
         merged[key] = value;
       }
@@ -143,6 +147,7 @@ export async function sendEmail(
   request: SendEmailRequest,
   template: TemplateConfig,
   accountConfig: EmailAccountConfig,
+  requestValidation?: RequestValidationConfig,
 ): Promise<{ messageId: string; success: boolean }> {
   const sendMailOptions = mergeSendMailOptions(
     request.sendMailOptions,
@@ -151,6 +156,7 @@ export async function sendEmail(
   );
 
   validateSendMailOptions(sendMailOptions);
+  validateAttachments(sendMailOptions.attachments, requestValidation);
 
   if (!sendMailOptions.from) {
     throw new EmailRequestError('Missing required field: from', 400);

@@ -164,6 +164,13 @@ export class TemplateLoader {
       );
     }
 
+    const schema = config.schema as Record<string, unknown>;
+    if (schema.type !== 'object') {
+      throw new Error(
+        `Template "${config.id}" schema must have type: object`,
+      );
+    }
+
     const templatePath = this.resolveTemplateFile(templateDir, rendererType);
 
     return {
@@ -215,6 +222,10 @@ export class TemplateLoader {
     templateId: string,
   ): (TemplateConfig & { templatePath: string }) | undefined {
     return this.templates.get(templateId);
+  }
+
+  getTemplateIds(): string[] {
+    return [...this.templates.keys()];
   }
 
   hasTemplate(templateId: string): boolean {

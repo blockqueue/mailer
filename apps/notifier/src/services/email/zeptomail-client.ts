@@ -3,6 +3,8 @@ import axios from 'axios';
 import type { ZeptomailAccountConfig } from '../../types/config';
 import type { EmailOptions, SendResult } from './base-client';
 import { EmailClient } from './base-client';
+import { EmailRequestError } from './errors';
+import { parseEmailAddress } from '../../utils/parseEmailAddress';
 
 interface ZeptomailSendResponse {
   data?: {
@@ -60,6 +62,12 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
         throw new Error('From address is required');
       }
 
+      const parsedFrom = parseEmailAddress(fromAddress);
+      const fromName =
+        this.config.fromName?.trim() ??
+        parsedFrom.name ??
+        parsedFrom.address;
+
       const ccAddresses = this.toArray(options.cc);
       const bccAddresses = this.toArray(options.bcc);
 
@@ -71,7 +79,7 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
       });
 
       const payload = {
-        from: { address: fromAddress, name: 'noreply' },
+        from: { address: parsedFrom.address, name: fromName },
         to: toAddresses.map((address) => ({ email_address: { address } })),
         ...(ccAddresses && { cc: ccAddresses.map(mapRecipient) }),
         ...(bccAddresses && { bcc: bccAddresses.map(mapRecipient) }),
@@ -111,11 +119,22 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
         payload,
       );
 
+      const messageId = resp.data.request_id?.trim() ?? '';
+      if (!messageId) {
+        throw new EmailRequestError(
+          'Zeptomail response missing request_id',
+          502,
+        );
+      }
+
       return {
-        messageId: resp.data.request_id ?? '',
+        messageId,
         success: true,
       };
     } catch (error) {
+      if (error instanceof EmailRequestError) {
+        throw error;
+      }
       if (axios.isAxiosError(error)) {
         const errorData = error.response?.data as
           | { error?: { message?: string } }

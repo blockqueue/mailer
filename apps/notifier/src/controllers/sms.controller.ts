@@ -134,6 +134,13 @@ export async function sendSmsController(
     return c.json(response);
   } catch (error: unknown) {
     if (error instanceof SmsRequestError) {
+      if (error.status === 502) {
+        logger.error({ error: error.message }, 'SMS provider error');
+        return c.json(
+          { success: false, message: 'SMS provider error' },
+          502,
+        );
+      }
       return c.json({ success: false, message: error.message }, error.status);
     }
 
@@ -150,7 +157,7 @@ export async function sendSmsController(
     return c.json(
       {
         success: false,
-        message: errorMessage,
+        message: 'Internal server error',
       },
       500,
     );

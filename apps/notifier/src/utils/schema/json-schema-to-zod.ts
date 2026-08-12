@@ -33,7 +33,12 @@ export function jsonSchemaToZod(schema: unknown): z.ZodType {
       }
     }
 
-    return z.object(shape);
+    let objectSchema = z.object(shape);
+    if (jsonSchema.additionalProperties === false) {
+      objectSchema = objectSchema.strict();
+    }
+
+    return objectSchema;
   }
 
   if (jsonSchema.type === 'array') {
@@ -45,15 +50,31 @@ export function jsonSchemaToZod(schema: unknown): z.ZodType {
   }
 
   if (jsonSchema.type === 'string') {
+    let stringSchema = z.string();
+
+    if (typeof jsonSchema.minLength === 'number') {
+      stringSchema = stringSchema.min(jsonSchema.minLength);
+    }
+    if (typeof jsonSchema.maxLength === 'number') {
+      stringSchema = stringSchema.max(jsonSchema.maxLength);
+    }
+    if (typeof jsonSchema.pattern === 'string') {
+      stringSchema = stringSchema.regex(new RegExp(jsonSchema.pattern));
+    }
     if (jsonSchema.format === 'email') {
       // eslint-disable-next-line @typescript-eslint/no-deprecated -- z.string().email() is the correct Zod API
-      return z.string().email();
+      stringSchema = stringSchema.email();
     }
-    return z.string();
+
+    return stringSchema;
   }
 
-  if (jsonSchema.type === 'number' || jsonSchema.type === 'integer') {
+  if (jsonSchema.type === 'number') {
     return z.number();
+  }
+
+  if (jsonSchema.type === 'integer') {
+    return z.number().int();
   }
 
   if (jsonSchema.type === 'boolean') {

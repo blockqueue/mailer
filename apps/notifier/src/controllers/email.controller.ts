@@ -101,7 +101,14 @@ export async function sendEmailController(
     const html = await renderer.render(template.templatePath, payload);
 
     client = createEmailClient(accountConfig);
-    const result = await sendEmail(client, html, body, template, accountConfig);
+    const result = await sendEmail(
+      client,
+      html,
+      body,
+      template,
+      accountConfig,
+      config.requestValidation,
+    );
 
     const response: SendResponse = {
       success: true,
@@ -111,6 +118,13 @@ export async function sendEmailController(
     return c.json(response);
   } catch (error: unknown) {
     if (error instanceof EmailRequestError) {
+      if (error.status === 502) {
+        logger.error({ error: error.message }, 'Email provider error');
+        return c.json(
+          { success: false, message: 'Email provider error' },
+          502,
+        );
+      }
       return c.json(
         { success: false, message: error.message },
         error.status,
@@ -129,7 +143,7 @@ export async function sendEmailController(
     return c.json(
       {
         success: false,
-        message: errorMessage,
+        message: 'Internal server error',
       },
       500,
     );

@@ -49,6 +49,17 @@ This is infrastructure software, not a standalone product. We focus on making it
 
 ### Using Docker Compose
 
+The repo includes a working example under [examples/notifier-service](examples/notifier-service). From the repo root:
+
+```bash
+docker compose build
+docker compose up bq-example-notifier-service
+```
+
+Replace the demo secrets in `docker-compose.yml` before deploying anywhere outside local development.
+
+That builds the slim notifier runtime plus a consumer image with compiled templates and example config. For a minimal hand-rolled setup:
+
 1. Create a `config` directory with `config.yaml`:
 
 ```yaml
@@ -104,7 +115,7 @@ docker-compose up
 npm install
 ```
 
-2. Copy `apps/notifier/.env.example` to `apps/notifier/.env` (points at [examples/notifier-service](examples/notifier-service) config and emails by default)
+2. Copy `apps/notifier/.env.example` to `apps/notifier/.env` (points at [examples/notifier-service](examples/notifier-service) config and templates by default)
 
 3. Set any provider secrets you reference in that config
 
@@ -122,7 +133,7 @@ For a production-like Docker run with compiled templates, see [examples/notifier
 
 **Canonical guide:** [examples/notifier-service](examples/notifier-service) — bake your templates into a consumer image. Volume-mounting templates into Distroless is not supported.
 
-Authors keep editable source under `emails/` (`.tsx` / `.mjml` / `.html`) and preview with React Email. When ready to ship, the consumer Dockerfile compiles templates into the slim notifier image:
+Authors keep editable source under `templates/` (`.tsx` / `.mjml` / `.html`) and preview with React Email. When ready to ship, the consumer Dockerfile compiles templates into the slim notifier image:
 
 ```dockerfile
 ARG NOTIFIER_IMAGE=ghcr.io/blockqueue/notifier:latest
@@ -132,7 +143,7 @@ FROM node:24-alpine AS compile
 WORKDIR /work
 COPY --from=notifier /app/dist/compile-templates.mjs ./compile-templates.mjs
 RUN npm init -y && npm install esbuild mjml @react-email/components react react-dom
-COPY ./emails /templates-src
+COPY ./templates /templates-src
 RUN node ./compile-templates.mjs /templates-src /app/templates
 
 FROM ${NOTIFIER_IMAGE}
@@ -187,6 +198,10 @@ auth:
 # Optional: Request validation settings
 requestValidation:
   maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
+  maxAttachmentSize: 10485760 # Per-attachment limit in bytes (default: 10MB)
+  allowedAttachmentMimeTypes: # Optional allowlist (defaults to common pdf/image/text types)
+    - application/pdf
+    - image/png
 ```
 
 **Full Example:**
@@ -228,6 +243,7 @@ sms:
 
 requestValidation:
   maxBodySize: 1048576
+  maxAttachmentSize: 10485760
 ```
 
 #### Environment Variable Substitution
@@ -258,6 +274,7 @@ email:
     zeptomail:
       type: zeptomail
       from: noreply@example.com
+      fromName: MyApp                 # Optional display name
       apiKey: ${ZEPTOMAIL_API_KEY}
       bounceAddress: ${ZEPTOMAIL_BOUNCE_ADDRESS} # Optional
 ```
@@ -294,7 +311,7 @@ sms:
 
 ## Templates
 
-**Source** (authoring): directories under your consumer `emails/` folder.
+**Source** (authoring): directories under your consumer `templates/` folder.
 **Runtime** (baked image): compiled artifacts under `/app/templates/` (default `TEMPLATES_DIR`).
 
 The loader recursively finds every `template.yaml` under the templates directory. Nested folders are supported. Each template `id` must be **unique** across the tree (directory name no longer has to match `id`). Path segments starting with `_` (e.g. `_components`) are skipped.
@@ -480,57 +497,38 @@ if (!secret) {
   throw new Error('NOTIFIER_SIGNING_SECRET is required.');
 }
 
-// Get the request body as a string
 const bodyString = pm.request.body.raw;
 if (!bodyString) {
-  console.error('Error: Request body is empty');
   throw new Error('Request body is required for HMAC signing');
 }
 
-// Generate Unix timestamp in seconds
 const timestamp = Math.floor(Date.now() / 1000);
 const message = `${timestamp}.${bodyString}`;
 
-// Convert secret and message to ArrayBuffer
 const encoder = new TextEncoder();
 const keyData = encoder.encode(secret);
 const messageData = encoder.encode(message);
 
-// Import key and sign (async operation)
-crypto.subtle
-  .importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: { name: 'SHA-512' } },
-    false,
-    ['sign'],
-  )
-  .then((key) => {
-    return crypto.subtle.sign('HMAC', key, messageData);
-  })
-  .then((signatureBuffer) => {
-    // Convert ArrayBuffer to hex string
-    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
-    const signature = signatureArray
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
+const key = await crypto.subtle.importKey(
+  'raw',
+  keyData,
+  { name: 'HMAC', hash: { name: 'SHA-512' } },
+  false,
+  ['sign'],
+);
 
-    // Set the signature header
-    const signatureHeader = `t=${timestamp},v1=${signature}`;
-    pm.request.headers.add({
-      key: 'x-notifier-signature',
-      value: signatureHeader,
-    });
+const signatureBuffer = await crypto.subtle.sign('HMAC', key, messageData);
+const signature = Array.from(new Uint8Array(signatureBuffer))
+  .map((b) => b.toString(16).padStart(2, '0'))
+  .join('');
 
-    console.log('HMAC signature generated and added to request');
-    console.log(`Timestamp: ${timestamp}`);
-    console.log(`Signature: ${signature.substring(0, 16)}...`);
-  })
-  .catch((err) => {
-    console.error('Error generating signature:', err);
-    throw new Error(`Failed to generate HMAC signature: ${err.message}`);
-  });
+pm.request.headers.upsert({
+  key: 'x-notifier-signature',
+  value: `t=${timestamp},v1=${signature}`,
+});
 ```
+
+Use top-level `await` so signing finishes before the request is sent (Postman v10+).
 
 **Setup:**
 
@@ -568,7 +566,7 @@ crypto.subtle
 - `sendMailOptions` (optional): Email sending options
   - `to` (required): Recipient email address(es) - string or array of strings
   - `from` (optional): Sender email address. Falls back to `template.from` > `account.from` if not provided
-  - `subject` (optional): Email subject
+  - `subject` (required unless set on the template): Email subject
   - `cc` (optional): CC recipient(s) - string or array of strings
   - `bcc` (optional): BCC recipient(s) - string or array of strings
   - `replyTo` (optional): Reply-to email address
@@ -637,7 +635,19 @@ Send an SMS via a configured SMS account (Termii). No templates.
 
 ### GET /health
 
-Health check endpoint.
+Health check endpoint (process is up).
+
+#### Response
+
+```json
+{
+  "status": "ok"
+}
+```
+
+### GET /ready
+
+Readiness check. Returns `503` when the email channel is configured but no templates are loaded.
 
 #### Response
 
@@ -660,7 +670,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Email validation failed: Invalid 'cc' addresses: invalid-email, another-invalid"
+  "success": false,
+  "message": "Email validation failed: Invalid 'cc' addresses: invalid-email, another-invalid"
 }
 ```
 
@@ -670,27 +681,35 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Error message",
-  "details": ["Additional error details"] // Optional, for validation errors
+  "success": false,
+  "message": "Error message",
+  "details": ["Additional error details"]
 }
 ```
+
+`details` is optional (for example payload validation failures).
 
 ### HTTP Status Codes
 
 - `400` - Bad Request
-  - Missing required fields (`templateId`, `payload`, `to`)
+  - Missing required fields (`templateId`, `payload`, `to`, `body`, etc.)
   - Payload validation failed (doesn't match template schema)
   - Email validation failed (invalid email addresses)
   - No account specified and no default account configured
+  - Unknown email/SMS account id
 - `401` - Unauthorized
-  - Invalid or missing API key
+  - Invalid or missing API key or HMAC signature
 - `404` - Not Found
   - Template not found
-  - Account not found
+- `413` - Payload Too Large
+  - Request body exceeds `requestValidation.maxBodySize`
+- `502` - Bad Gateway
+  - Email or SMS provider failure
+- `503` - Service Unavailable
+  - Email or SMS channel not configured
 - `500` - Internal Server Error
   - Template rendering errors
-  - Provider / transport errors
-  - Other server errors
+  - Other unexpected server errors
 
 ### Common Error Scenarios
 
@@ -698,7 +717,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Missing required field: templateId"
+  "success": false,
+  "message": "Missing required field: templateId"
 }
 ```
 
@@ -706,7 +726,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Template not found: welcome"
+  "success": false,
+  "message": "Template not found: welcome"
 }
 ```
 
@@ -714,7 +735,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Payload validation failed",
+  "success": false,
+  "message": "Payload validation failed",
   "details": ["userName: Required", "appName: Required"]
 }
 ```
@@ -723,7 +745,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Email validation failed: Invalid 'to' addresses: invalid-email"
+  "success": false,
+  "message": "Email validation failed: Invalid 'to' addresses: invalid-email"
 }
 ```
 
@@ -731,7 +754,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Missing required field: 'from' in sendMailOptions. Provide it in request.sendMailOptions, template.from, or account.from (for 'from' field only)"
+  "success": false,
+  "message": "Missing required field: from"
 }
 ```
 
@@ -755,6 +779,7 @@ HMAC authentication provides:
 ### Request Validation
 
 - Body size limit: 1MB default (configurable via `requestValidation.maxBodySize`)
+- Attachment size and MIME allowlist (configurable via `requestValidation.maxAttachmentSize` and `allowedAttachmentMimeTypes`)
 - Content-Type validation: Requires `application/json` for POST requests
 
 **Configuration:**
@@ -762,6 +787,10 @@ HMAC authentication provides:
 ```yaml
 requestValidation:
   maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
+  maxAttachmentSize: 10485760 # Per attachment (default: 10MB)
+  allowedAttachmentMimeTypes:
+    - application/pdf
+    - image/png
 ```
 
 The `maxBodySize` is specified in bytes. Common values:
@@ -852,7 +881,7 @@ apps/notifier/
 - `CONFIG_PATH` - Path to config file (default: `/config/config.yaml`)
 - `TEMPLATES_DIR` - Path to templates directory (default: `/app/templates`)
 
-**Note**: Baked consumer images use the defaults (`/config/config.yaml` and `/app/templates`). Override these only for local API development (e.g. point `TEMPLATES_DIR` at your `emails/` folder). Do not volume-mount templates into the Distroless runtime — bake a new image when templates change.
+**Note**: Baked consumer images use the defaults (`/config/config.yaml` and `/app/templates`). Override these only for local API development (e.g. point `TEMPLATES_DIR` at your `templates/` folder). Do not volume-mount templates into the Distroless runtime — bake a new image when templates change.
 
 **All other environment variables** are user-defined based on what you reference in your `config.yaml` using the `${VAR_NAME}` syntax. For example, if your config uses `${MY_CUSTOM_API_KEY}`, then you would set the `MY_CUSTOM_API_KEY` environment variable.
 
@@ -864,16 +893,10 @@ apps/notifier/
 - `${AWS_REGION}` / `${AWS_ACCESS_KEY_ID}` / `${AWS_SECRET_ACCESS_KEY}` - SES credentials
 - `PORT` - Server port (default: 3000) — used by the process, not via config.yaml substitution
 
-### Running Tests
-
-```bash
-bun test
-```
-
 ### Linting
 
 ```bash
-bun run lint
+npm run lint
 ```
 
 ## Docker

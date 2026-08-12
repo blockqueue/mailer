@@ -1,7 +1,8 @@
 import type { Context, Next } from 'hono';
+import type { AppEnv } from '../types/hono';
 import { logger } from '../utils/logger';
 
-function extractRequestMetadata(c: Context): {
+function extractRequestMetadata(c: Context<AppEnv>): {
   templateId?: string;
   accountId?: string;
 } {
@@ -11,9 +12,7 @@ function extractRequestMetadata(c: Context): {
     return {};
   }
 
-  const parsedBody = (c as unknown as { get: (key: string) => unknown }).get(
-    'parsedBody',
-  ) as Record<string, unknown> | undefined;
+  const parsedBody = c.get('parsedBody');
 
   if (
     !parsedBody ||
@@ -34,7 +33,7 @@ function extractRequestMetadata(c: Context): {
 }
 
 export function auditLogMiddleware() {
-  return async (c: Context, next: Next) => {
+  return async (c: Context<AppEnv>, next: Next) => {
     const startTime = Date.now();
     const method = c.req.method;
     const path = c.req.path;
@@ -83,33 +82,46 @@ export function auditLogMiddleware() {
           templateId,
           accountId,
         },
-        'Access denied',
+        'Forbidden',
       );
     }
 
-    if (requestSize && requestSize > 100 * 1024) {
+    if (statusCode >= 500) {
+      logger.error(
+        {
+          method,
+          path,
+          statusCode,
+          templateId,
+          accountId,
+        },
+        'Server error',
+      );
+    }
+
+    if (requestSize && requestSize > 512 * 1024) {
       logger.warn(
         {
           method,
           path,
           requestSize,
+          templateId,
+          accountId,
         },
-        'Large request detected',
+        'Large request',
       );
     }
 
-    const slowRequestThreshold =
-      path === '/email/send' || path === '/sms/send' ? 10000 : 1000;
-
-    if (responseTime > slowRequestThreshold) {
+    if (responseTime > 5000) {
       logger.warn(
         {
           method,
           path,
           responseTime,
-          threshold: slowRequestThreshold,
+          templateId,
+          accountId,
         },
-        'Slow request detected',
+        'Slow request',
       );
     }
   };

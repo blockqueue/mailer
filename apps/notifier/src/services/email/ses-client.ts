@@ -5,6 +5,7 @@ import MailComposer from 'nodemailer/lib/mail-composer/index.js';
 import type { SesAccountConfig } from '../../types/config';
 import type { EmailOptions, SendResult } from './base-client';
 import { EmailClient } from './base-client';
+import { EmailRequestError } from './errors';
 
 export class SesEmailClient extends EmailClient<SesAccountConfig> {
   private readonly client: SESClient;
@@ -86,11 +87,19 @@ export class SesEmailClient extends EmailClient<SesAccountConfig> {
       });
       const response: SendEmailCommandOutput = await this.client.send(command);
 
+      const messageId = response.MessageId?.trim() ?? '';
+      if (!messageId) {
+        throw new EmailRequestError('SES response missing MessageId', 502);
+      }
+
       return {
-        messageId: response.MessageId ?? '',
+        messageId,
         success: true,
       };
     } catch (error) {
+      if (error instanceof EmailRequestError) {
+        throw error;
+      }
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to send email via SES: ${errorMessage}`);
