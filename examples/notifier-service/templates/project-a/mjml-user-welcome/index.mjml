@@ -23,7 +23,7 @@
           Welcome, {{userName}}
         </mj-text>
         <mj-text color="#3f3f46" padding="0 0 16px">
-          Thanks for joining {{appName}}. Your account is set up — open the app
+          Thanks for joining {{appName}}. Your account is set up. Open the app
           to finish onboarding and explore what’s available to you.
         </mj-text>
         <mj-button href="{{ctaUrl}}" padding="8px 0 24px" align="left">

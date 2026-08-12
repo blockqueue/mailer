@@ -4,9 +4,9 @@ Canonical example of shipping your own templates on top of the BlockQueue notifi
 
 ## Workflow
 
-1. **Edit** source templates under `templates/` (`.tsx`, `.mjml`, or `.html`) — nested folders are fine; each `template.yaml` must have a unique `id`
-2. **Preview** with `npm run dev` — React Email on :10001 and HTML/MJML on :10002 (or run either alone via `preview:react-email` / `preview:mjml-html`)
-3. **Build** a consumer image — Dockerfile packages templates into `/app/templates` (React Email → `index.mjs`; MJML/HTML copied for runtime Handlebars + MJML)
+1. **Edit** source templates under `templates/` (`.tsx`, `.mjml`, or `.html`). Nested folders are fine; each `template.yaml` must have a unique `id`
+2. **Preview** with `npm run dev`: React Email on :10001 and HTML/MJML on :10002 (or run either alone via `preview:react-email` / `preview:mjml-html`)
+3. **Build** a consumer image. The Dockerfile packages templates into `/app/templates` (React Email → `index.mjs`; MJML/HTML copied for runtime Handlebars + MJML)
 
 Production always bakes templates into the image; volume mounts are not supported.
 
@@ -42,8 +42,8 @@ npm run dev
 
 Starts both preview servers:
 
-- React Email (`.tsx`) — http://localhost:10001
-- HTML / MJML (Handlebars) — http://localhost:10002
+- React Email (`.tsx`): http://localhost:10001
+- HTML / MJML (Handlebars): http://localhost:10002
 
 Run one side only with `npm run preview:react-email` or `npm run preview:mjml-html`.
 
@@ -76,12 +76,12 @@ Or run the image directly:
 docker run --rm -p 3000:3000 --env-file ../../apps/notifier/.env.example example-notifier-service
 ```
 
-Copy `apps/notifier/.env.example` and replace dummy values with real provider credentials to actually send mail/SMS. Do **not** set `CONFIG_PATH` / `TEMPLATES_DIR` for the baked image — config and templates are already at `/config/config.yaml` and `/app/templates`. Empty env values fail config substitution when those accounts are referenced in `config.yaml`.
+Copy `apps/notifier/.env.example` and replace dummy values with real provider credentials to actually send mail/SMS. Do **not** set `CONFIG_PATH` / `TEMPLATES_DIR` for the baked image; config and templates are already at `/config/config.yaml` and `/app/templates`. Empty env values fail config substitution when those accounts are referenced in `config.yaml`.
 
 ## API smoke
 
 ```bash
-# Email — optional --sample=1..7 (default: 1 = mjml-user-welcome)
+# Email: optional --sample=1..7 (default: 1 = mjml-user-welcome)
 NOTIFIER_SIGNING_SECRET=… node scripts/send-welcome-mjml.js
 NOTIFIER_SIGNING_SECRET=… node scripts/send-welcome-mjml.js --sample=2   # html-user-welcome
 NOTIFIER_SIGNING_SECRET=… node scripts/send-welcome-mjml.js --sample=3   # mjml-login-otp

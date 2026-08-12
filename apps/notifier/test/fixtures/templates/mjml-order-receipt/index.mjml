@@ -5,7 +5,7 @@
         <mj-text>Order {{orderId}}</mj-text>
         <mj-text>Hi {{customerName}}, thanks for your purchase.</mj-text>
         {{#each lineItems}}
-        <mj-text>{{quantity}}× {{name}} — {{price}}</mj-text>
+        <mj-text>{{quantity}}× {{name}}: {{price}}</mj-text>
         {{/each}}
         <mj-text>Total: {{total}}</mj-text>
       </mj-column>

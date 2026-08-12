@@ -28,7 +28,7 @@ export function Email(props: WelcomeEmailProps) {
       <Html>
         <Head />
         <Preview>
-          Welcome to {appName}, {userName} — your account is ready.
+          Welcome to {appName}, {userName}. Your account is ready.
         </Preview>
         <Body className="bg-zinc-100 font-sans text-zinc-900">
           <Container className="mx-auto my-8 max-w-[560px] overflow-hidden rounded-lg bg-white">
@@ -43,7 +43,7 @@ export function Email(props: WelcomeEmailProps) {
                 Welcome, {userName}
               </Heading>
               <Text className="m-0 mb-4 text-base leading-relaxed text-zinc-600">
-                Thanks for joining {appName}. Your account is ready — jump in to
+                Thanks for joining {appName}. Your account is ready. Jump in to
                 finish setup and start building.
               </Text>
               <Button

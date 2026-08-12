@@ -1,6 +1,6 @@
 FROM node:24-alpine AS base
 
-# glibc compat for turbo on Alpine — https://turborepo.dev/docs/guides/tools/docker
+# glibc compat for turbo on Alpine: https://turborepo.dev/docs/guides/tools/docker
 RUN apk update && apk add --no-cache libc6-compat
 
 

@@ -1,5 +1,4 @@
 services:
-  # Base image only — exit so compose does not boot the API without config.
   bq-notifier-build:
     build:
       context: .
@@ -12,7 +11,9 @@ services:
       context: ./examples/notifier-service
       dockerfile: Dockerfile
       args:
-        NOTIFIER_IMAGE: blockqueue/notifier:latest
+        NOTIFIER_IMAGE: notifier
+      additional_contexts:
+        notifier: service:bq-notifier-build
     image: blockqueue/example-notifier-service:latest
     ports:
       - '3000:3000'

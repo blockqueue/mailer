@@ -2,6 +2,6 @@
   "name": "cssnano",
   "version": "7.1.9",
   "private": true,
-  "description": "Stub — mjml-core lists cssnano but only requires cssnano-preset-lite; drop the default preset tree",
+  "description": "Stub: mjml-core lists cssnano but only requires cssnano-preset-lite; drop the default preset tree",
   "main": "index.js"
 }

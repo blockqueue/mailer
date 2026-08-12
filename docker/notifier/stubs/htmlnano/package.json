@@ -2,6 +2,6 @@
   "name": "htmlnano",
   "version": "3.4.0",
   "private": true,
-  "description": "Identity stub — mjml-core requires htmlnano at import time; we never set minify:true",
+  "description": "Identity stub: mjml-core requires htmlnano at import time; we never set minify:true",
   "main": "index.js"
 }

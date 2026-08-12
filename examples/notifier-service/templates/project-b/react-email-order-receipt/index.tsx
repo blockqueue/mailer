@@ -69,7 +69,7 @@ export function Email(props: OrderReceiptEmailProps) {
 
               {isGift ? (
                 <Text className="m-0 mb-5 rounded-md bg-zinc-100 px-3.5 py-3 text-sm leading-relaxed text-zinc-600">
-                  This order is marked as a gift — we will not include pricing
+                  This order is marked as a gift, so we will not include pricing
                   on the packing slip.
                 </Text>
               ) : null}

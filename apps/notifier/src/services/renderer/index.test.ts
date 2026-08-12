@@ -37,8 +37,8 @@ describe('renderers', () => {
       },
     );
     expect(html).toContain('Order ORD-1001 for Ada');
-    expect(html).toContain('1× USB-C Hub — $49.00');
-    expect(html).toContain('2× Cable — $12.00');
+    expect(html).toContain('1× USB-C Hub: $49.00');
+    expect(html).toContain('2× Cable: $12.00');
     expect(html).toContain('Total: $73.00');
   });
 
