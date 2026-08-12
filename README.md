@@ -143,10 +143,10 @@ FROM ${NOTIFIER_IMAGE} AS notifier
 
 FROM node:24-alpine AS compile
 WORKDIR /work
-COPY --from=notifier /app/dist/compile-templates.mjs ./compile-templates.mjs
+COPY --from=notifier /app/dist/compile-templates.cjs ./compile-templates.cjs
 RUN npm init -y && npm install esbuild @react-email/components react react-dom
 COPY ./templates /templates-src
-RUN node ./compile-templates.mjs /templates-src /app/templates
+RUN node ./compile-templates.cjs /templates-src /app/templates
 
 FROM ${NOTIFIER_IMAGE}
 COPY --from=compile /app/templates /app/templates
@@ -254,8 +254,8 @@ Use `${VAR_NAME}` or `${VAR_NAME:-default}` syntax in your YAML config files (bo
 
 ```yaml
 auth:
-  value: ${NOTIFIER_API_KEY}  # Required, will error if not set
-  value: ${NOTIFIER_API_KEY:-default-key}  # Optional, uses default if not set
+  value: ${NOTIFIER_API_KEY} # Required, will error if not set
+  value: ${NOTIFIER_API_KEY:-default-key} # Optional, uses default if not set
 ```
 
 **Important Notes:**
@@ -933,7 +933,7 @@ npm run lint
 docker build -t blockqueue/notifier:latest -f docker/notifier/Dockerfile.prod .
 ```
 
-The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.mjs`, and the peers pinned in [`docker/notifier/package.runtime.json`](docker/notifier/package.runtime.json) (`react` / `react-dom` / `@react-email/render` / `handlebars` / `mjml`). Runtime deps are installed on Debian (glibc) before copying into Distroless. It does **not** include `tsx` or `@react-email/components`.
+The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.cjs`, and the peers pinned in [`docker/notifier/package.runtime.json`](docker/notifier/package.runtime.json) (`react` / `react-dom` / `@react-email/render` / `handlebars` / `mjml`). Runtime deps are installed on Debian (glibc) before copying into Distroless. It does **not** include `tsx` or `@react-email/components`.
 
 (Chainguard’s public `node` image was evaluated; Distroless was smaller.)
 

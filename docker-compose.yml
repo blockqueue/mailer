@@ -14,16 +14,7 @@ services:
     image: blockqueue/example-notifier-service:latest
     ports:
       - '3000:3000'
-    environment:
-      - NODE_ENV=production
-      - LOG_LEVEL=info
-      - NOTIFIER_SIGNING_SECRET=${NOTIFIER_SIGNING_SECRET}
-      - MAIL_FROM_EMAIL=noreply@example.com
-      - ZEPTOMAIL_API_KEY=your-api-key
-      - AWS_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=your-access-key-id
-      - AWS_SECRET_ACCESS_KEY=your-secret-access-key
-      - TERMII_API_KEY=your-termii-api-key
-      - TERMII_FROM=MyApp
+    env_file:
+      - ./apps/notifier/.env
     depends_on:
       - bq-notifier-build

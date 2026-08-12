@@ -1,0 +1,7 @@
+{
+  "name": "js-beautify",
+  "version": "1.15.4",
+  "private": true,
+  "description": "Identity stub — mjml-core requires js-beautify at import time; we never set beautify:true",
+  "main": "index.js"
+}

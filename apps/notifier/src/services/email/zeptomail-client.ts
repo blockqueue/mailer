@@ -169,8 +169,7 @@ export class ZeptomailEmailClient extends EmailClient<
       }
       if (axios.isAxiosError(error)) {
         const errorData = error.response?.data as
-          | { error?: { message?: string } }
-          | undefined;
+          { error?: { message?: string } } | undefined;
         const errorMessage =
           errorData?.error?.message ??
           error.response?.statusText ??

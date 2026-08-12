@@ -1,8 +1,7 @@
 import type { Context } from 'hono';
 
 type ParsedBodyResult =
-  | { ok: true; value: unknown }
-  | { ok: false; response: Response };
+  { ok: true; value: unknown } | { ok: false; response: Response };
 
 export function requireParsedBody(c: Context): ParsedBodyResult {
   const value: unknown = c.get('parsedBody');

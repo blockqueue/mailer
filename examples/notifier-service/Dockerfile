@@ -4,7 +4,7 @@ FROM ${NOTIFIER_IMAGE} AS notifier
 
 FROM node:24-alpine AS compile
 WORKDIR /work
-COPY --from=notifier /app/dist/compile-templates.mjs ./compile-templates.mjs
+COPY --from=notifier /app/dist/compile-templates.cjs ./compile-templates.cjs
 RUN npm init -y \
   && npm install \
     esbuild@0.27.2 \
@@ -12,7 +12,7 @@ RUN npm init -y \
     react@19.2.3 \
     react-dom@19.2.3
 COPY ./templates /templates-src
-RUN node ./compile-templates.mjs /templates-src /app/templates
+RUN node ./compile-templates.cjs /templates-src /app/templates
 
 FROM ${NOTIFIER_IMAGE}
 COPY --from=compile /app/templates /app/templates

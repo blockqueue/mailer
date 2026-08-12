@@ -73,8 +73,7 @@ export function jsonSchemaToZod(schema: unknown): z.ZodType {
   if (jsonSchema.type === 'object') {
     const shape: Record<string, z.ZodType> = {};
     const properties = jsonSchema.properties as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
 
     if (properties) {
       for (const [key, propSchema] of Object.entries(properties)) {

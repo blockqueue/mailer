@@ -201,6 +201,7 @@ function isCliEntry(): boolean {
   const base = path.basename(entry);
   return (
     base === 'compile-templates.ts' ||
+    base === 'compile-templates.cjs' ||
     base === 'compile-templates.mjs' ||
     base === 'compile-templates.js'
   );
