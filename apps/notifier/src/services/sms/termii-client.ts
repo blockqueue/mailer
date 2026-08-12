@@ -93,8 +93,8 @@ export class TermiiSmsClient extends SmsClient<
       );
     }
 
-    const from = options.from ?? this.config.from;
-    if (!from || from.trim().length === 0) {
+    const from = (options.from ?? this.config.from)?.trim();
+    if (!from) {
       throw new SmsRequestError(
         'Missing required SMS field: from (sender ID)',
         400,
@@ -116,10 +116,16 @@ export class TermiiSmsClient extends SmsClient<
       );
     }
 
-    const recipients = Array.isArray(to) ? to : [to];
+    const rawRecipients = Array.isArray(to) ? to : [to];
+    if (rawRecipients.some((recipient) => typeof recipient !== 'string')) {
+      throw new SmsRequestError(
+        'Field to must be a string or array of strings',
+        400,
+      );
+    }
+    const recipients = rawRecipients.map((recipient) => recipient.trim());
     const invalidRecipients = recipients.filter(
-      (recipient) =>
-        typeof recipient !== 'string' || !isValidE164LikePhone(recipient),
+      (recipient) => !isValidE164LikePhone(recipient),
     );
     if (invalidRecipients.length > 0) {
       throw new SmsRequestError(
@@ -163,7 +169,7 @@ export class TermiiSmsClient extends SmsClient<
 
     const payload = {
       api_key: this.config.apiKey,
-      to,
+      to: Array.isArray(to) ? recipients : recipients[0],
       from,
       sms: body,
       type: messageType,

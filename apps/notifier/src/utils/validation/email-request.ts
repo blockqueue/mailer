@@ -20,7 +20,7 @@ function assertOptionalStringField(value: unknown, field: string): void {
   }
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new EmailRequestError(
-      `Invalid sendMailOptions.${field} (must be a non-empty string)`,
+      `Invalid ${field} (must be a non-empty string)`,
       400,
     );
   }
@@ -65,22 +65,27 @@ export function validateEmailRequestFields(
     assertOptionalStringField(body.account, 'account');
   }
 
-  const sendMailOptions = body.sendMailOptions;
+  const sendMailOptions: unknown = body.sendMailOptions;
   if (sendMailOptions === undefined) {
     return;
   }
 
-  if (typeof sendMailOptions !== 'object' || Array.isArray(sendMailOptions)) {
+  if (
+    sendMailOptions === null ||
+    typeof sendMailOptions !== 'object' ||
+    Array.isArray(sendMailOptions)
+  ) {
     throw new EmailRequestError('Field sendMailOptions must be an object', 400);
   }
+
+  const options = sendMailOptions as SendEmailRequest['sendMailOptions'] &
+    Record<string, unknown>;
 
   const knownKeys = new Set([
     ...COMMON_SEND_MAIL_KEYS,
     ...ZEPTOMAIL_SEND_MAIL_KEYS,
   ]);
-  const unknownKeys = Object.keys(sendMailOptions).filter(
-    (key) => !knownKeys.has(key),
-  );
+  const unknownKeys = Object.keys(options).filter((key) => !knownKeys.has(key));
   if (unknownKeys.length > 0) {
     throw new EmailRequestError(
       `Unknown sendMailOptions field(s): ${unknownKeys.join(', ')}`,
@@ -89,7 +94,7 @@ export function validateEmailRequestFields(
   }
 
   if (accountConfig && accountConfig.type !== 'zeptomail') {
-    const providerOnly = Object.keys(sendMailOptions).filter((key) =>
+    const providerOnly = Object.keys(options).filter((key) =>
       ZEPTOMAIL_SEND_MAIL_KEYS.has(key),
     );
     if (providerOnly.length > 0) {
@@ -100,17 +105,20 @@ export function validateEmailRequestFields(
     }
   }
 
-  assertOptionalStringField(sendMailOptions.from, 'from');
-  assertOptionalAddressListField(sendMailOptions.to, 'to');
-  assertOptionalStringField(sendMailOptions.subject, 'subject');
-  assertOptionalAddressListField(sendMailOptions.cc, 'cc');
-  assertOptionalAddressListField(sendMailOptions.bcc, 'bcc');
-  assertOptionalStringField(sendMailOptions.replyTo, 'replyTo');
-  assertOptionalStringField(sendMailOptions.bounceAddress, 'bounceAddress');
-  assertOptionalStringField(sendMailOptions.fromName, 'fromName');
+  assertOptionalStringField(options.from, 'sendMailOptions.from');
+  assertOptionalAddressListField(options.to, 'to');
+  assertOptionalStringField(options.subject, 'sendMailOptions.subject');
+  assertOptionalAddressListField(options.cc, 'cc');
+  assertOptionalAddressListField(options.bcc, 'bcc');
+  assertOptionalStringField(options.replyTo, 'sendMailOptions.replyTo');
+  assertOptionalStringField(
+    options.bounceAddress,
+    'sendMailOptions.bounceAddress',
+  );
+  assertOptionalStringField(options.fromName, 'sendMailOptions.fromName');
 
-  if (sendMailOptions.attachments !== undefined) {
-    if (!Array.isArray(sendMailOptions.attachments)) {
+  if (options.attachments !== undefined) {
+    if (!Array.isArray(options.attachments)) {
       throw new EmailRequestError(
         'Invalid sendMailOptions.attachments (must be an array)',
         400,

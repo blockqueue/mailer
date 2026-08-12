@@ -57,7 +57,9 @@ export class ZeptomailEmailClient extends EmailClient<
 
   async send(options: ZeptomailEmailOptions): Promise<SendResult> {
     try {
-      const toAddresses = toArray(options.to);
+      const toAddresses = toArray(options.to)?.map(
+        (address) => parseEmailAddress(address).address,
+      );
       if (!toAddresses || toAddresses.length === 0) {
         throw new EmailRequestError('At least one recipient is required', 400);
       }
@@ -74,30 +76,40 @@ export class ZeptomailEmailClient extends EmailClient<
         parsedFrom.name ??
         parsedFrom.address;
 
-      const ccAddresses = toArray(options.cc);
-      const bccAddresses = toArray(options.bcc);
+      const ccAddresses = toArray(options.cc)?.map(
+        (address) => parseEmailAddress(address).address,
+      );
+      const bccAddresses = toArray(options.bcc)?.map(
+        (address) => parseEmailAddress(address).address,
+      );
 
-      const mapRecipient = (email: string) => ({
+      const mapRecipient = (address: string) => ({
         email_address: {
-          address: email,
-          name: email,
+          address,
+          name: address,
         },
       });
+
+      const replyTo = options.replyTo
+        ? parseEmailAddress(options.replyTo)
+        : undefined;
 
       const payload = {
         from: { address: parsedFrom.address, name: fromName },
         to: toAddresses.map((address) => ({ email_address: { address } })),
         ...(ccAddresses && { cc: ccAddresses.map(mapRecipient) }),
         ...(bccAddresses && { bcc: bccAddresses.map(mapRecipient) }),
-        ...(options.replyTo && {
+        ...(replyTo && {
           reply_to: [
             {
-              address: options.replyTo,
-              name: options.replyTo,
+              address: replyTo.address,
+              name: replyTo.name ?? replyTo.address,
             },
           ],
         }),
-        ...(options.bounceAddress && { bounce_address: options.bounceAddress }),
+        ...(options.bounceAddress && {
+          bounce_address: parseEmailAddress(options.bounceAddress).address,
+        }),
         subject: options.subject,
         htmlbody: options.html,
         attachments: options.attachments?.map((att) => {

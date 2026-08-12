@@ -14,7 +14,6 @@ export interface SendMailOptions {
   attachments?: unknown[];
 }
 
-/** Zeptomail-only extras. Rejected when the resolved account is SES. */
 export interface ZeptomailSendMailOptions extends SendMailOptions {
   fromName?: string;
   bounceAddress?: string;
@@ -27,7 +26,6 @@ export interface SendEmailRequest {
   sendMailOptions?: ZeptomailSendMailOptions;
 }
 
-/** Termii-only until another SMS provider is added. */
 export interface TermiiSendOptions {
   version?: TermiiApiVersion;
   from?: string;
