@@ -9,8 +9,28 @@ const compiledCache = new Map<
   { mtimeMs: number; template: CompiledTemplate }
 >();
 
+function normalizeForSchemeCheck(value: string): string {
+  let stripped = '';
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0;
+    if (
+      code <= 0x1f ||
+      (code >= 0x7f && code <= 0x9f) ||
+      (code >= 0x200b && code <= 0x200d) ||
+      code === 0xfeff
+    ) {
+      continue;
+    }
+    stripped += char;
+  }
+  return stripped
+    .replace(/\s+/g, '')
+    .toLowerCase()
+    .replace(/&#x0*3a;|&#0*58;|&colon;/gi, ':');
+}
+
 function detectUnsafeUrlScheme(value: string): string | undefined {
-  const normalized = value.trimStart().toLowerCase();
+  const normalized = normalizeForSchemeCheck(value);
   if (normalized.startsWith('javascript:')) {
     return 'javascript';
   }
@@ -83,6 +103,15 @@ function mapHandlebarsError(error: unknown): never {
   throw new EmailRequestError(`Template render failed: ${message}`, 400);
 }
 
+function assertEscapedMustachesOnly(content: string): void {
+  if (content.includes('{{{') || content.includes('{{&')) {
+    throw new EmailRequestError(
+      'Unescaped Handlebars output is not allowed in HTML/MJML templates (no {{{...}}}, {{{{...}}}}, or {{&...}}). Use {{...}} so values stay HTML-escaped.',
+      400,
+    );
+  }
+}
+
 function getCompiledTemplate(
   content: string,
   cacheKey?: string,
@@ -94,6 +123,8 @@ function getCompiledTemplate(
       return hit.template;
     }
   }
+
+  assertEscapedMustachesOnly(content);
 
   const template = Handlebars.compile(content, {
     strict: true,

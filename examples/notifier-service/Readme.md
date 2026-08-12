@@ -27,7 +27,6 @@ examples/notifier-service/
 ├── config/
 │   └── config.yaml              # auth + email + sms channels
 ├── scripts/
-├── .env.example                 # placeholder secrets for docker compose / docker run
 ├── Dockerfile
 ├── package.json
 └── Readme.md
@@ -48,9 +47,9 @@ Starts both preview servers:
 
 Run one side only with `npm run preview:react-email` or `npm run preview:mjml-html`.
 
-Sample payloads for the static preview live in [`scripts/preview-payloads.json`](scripts/preview-payloads.json). Template edits reload the browser automatically.
+Sample payloads for the static preview live in [`scripts/preview-payloads.json`](scripts/preview-payloads.json). Template edits reload the browser automatically. Preview binds to `127.0.0.1` by default (`PREVIEW_HOST` / `PREVIEW_PORT`).
 
-For local API + source templates, use `apps/notifier` with `npm run dev` and `.env` from `.env.example`.
+For local API + source templates, use `apps/notifier` with `npm run dev` and `.env` from [`apps/notifier/.env.example`](../../apps/notifier/.env.example).
 
 ## Build
 
@@ -65,7 +64,7 @@ docker build -t example-notifier-service \
 
 ## Run
 
-From the repo root (builds the base image, then the example; loads placeholders from [`.env.example`](.env.example)):
+From the repo root (builds the base image, then the example; loads placeholders from [`apps/notifier/.env.example`](../../apps/notifier/.env.example)):
 
 ```bash
 docker compose up --build bq-example-notifier-service
@@ -74,10 +73,10 @@ docker compose up --build bq-example-notifier-service
 Or run the image directly:
 
 ```bash
-docker run --rm -p 3000:3000 --env-file .env.example example-notifier-service
+docker run --rm -p 3000:3000 --env-file ../../apps/notifier/.env.example example-notifier-service
 ```
 
-Copy `.env.example` and replace dummy values with real provider credentials to actually send mail/SMS. Do **not** set `CONFIG_PATH` / `TEMPLATES_DIR` for the baked image — config and templates are already at `/config/config.yaml` and `/app/templates`. Empty env values fail config substitution when those accounts are referenced in `config.yaml`.
+Copy `apps/notifier/.env.example` and replace dummy values with real provider credentials to actually send mail/SMS. Do **not** set `CONFIG_PATH` / `TEMPLATES_DIR` for the baked image — config and templates are already at `/config/config.yaml` and `/app/templates`. Empty env values fail config substitution when those accounts are referenced in `config.yaml`.
 
 ## API smoke
 

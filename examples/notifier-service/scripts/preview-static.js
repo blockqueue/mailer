@@ -23,6 +23,64 @@ let revision = Date.now();
 /** @type {PreviewTemplate[]} */
 let templates = [];
 
+function normalizeForSchemeCheck(value) {
+  return value
+    .replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\s+/g, '')
+    .toLowerCase()
+    .replace(/&#x0*3a;|&#0*58;|&colon;/gi, ':');
+}
+
+function detectUnsafeUrlScheme(value) {
+  const normalized = normalizeForSchemeCheck(value);
+  if (normalized.startsWith('javascript:')) {
+    return 'javascript';
+  }
+  if (normalized.startsWith('data:')) {
+    return 'data';
+  }
+  if (normalized.startsWith('vbscript:')) {
+    return 'vbscript';
+  }
+  return undefined;
+}
+
+function sanitizePayload(value, pathLabel = '') {
+  if (value === undefined || value === null) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const scheme = detectUnsafeUrlScheme(value);
+    if (scheme) {
+      console.warn(
+        `[preview] Blocked unsafe URL scheme (${scheme}) at ${pathLabel || 'value'}`,
+      );
+      return '';
+    }
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item, index) =>
+      sanitizePayload(item, `${pathLabel}[${String(index)}]`),
+    );
+  }
+  if (typeof value === 'object') {
+    /** @type {Record<string, unknown>} */
+    const result = {};
+    for (const [key, child] of Object.entries(value)) {
+      const childPath = pathLabel ? `${pathLabel}.${key}` : key;
+      result[key] = sanitizePayload(child, childPath);
+    }
+    return result;
+  }
+  throw new Error(
+    `Preview payload "${pathLabel || 'value'}" has unsupported type: ${typeof value}`,
+  );
+}
+
 function loadPayloads() {
   if (!fs.existsSync(PAYLOADS_PATH)) {
     return {};
@@ -82,8 +140,16 @@ function discoverTemplates() {
 
 async function renderTemplate(template, payloads) {
   const source = fs.readFileSync(template.sourcePath, 'utf-8');
-  const payload = payloads[template.id] ?? {};
-  const compiled = Handlebars.compile(source, { strict: true });
+  if (source.includes('{{{') || source.includes('{{&')) {
+    throw new Error(
+      'Unescaped Handlebars output is not allowed (no {{{...}}}, {{{{...}}}}, or {{&...}}). Use {{...}} so values stay HTML-escaped.',
+    );
+  }
+  const payload = sanitizePayload(payloads[template.id] ?? {});
+  const compiled = Handlebars.compile(source, {
+    strict: true,
+    noEscape: false,
+  });
   const expanded = compiled(payload);
 
   if (template.renderer === 'html') {
@@ -292,6 +358,13 @@ async function handleRequest(req, res) {
 
 refreshCatalog();
 watchTemplates();
+
+if (HOST !== '127.0.0.1' && HOST !== 'localhost' && HOST !== '::1') {
+  console.warn(
+    `[preview] PREVIEW_HOST=${HOST} is not loopback. Bind only on trusted networks.`,
+  );
+}
+
 server.on('error', (error) => {
   if (
     error &&

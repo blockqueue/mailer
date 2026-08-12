@@ -84,6 +84,67 @@ describe('renderHandlebarsTemplate', () => {
     ).toBe('');
   });
 
+  it('blocks obfuscated unsafe URL schemes', () => {
+    expect(
+      renderHandlebarsTemplate('{{url}}', {
+        url: 'java\nscript:alert(1)',
+      }),
+    ).toBe('');
+    expect(
+      renderHandlebarsTemplate('{{url}}', {
+        url: 'java\tscript:alert(1)',
+      }),
+    ).toBe('');
+    expect(
+      renderHandlebarsTemplate('{{url}}', {
+        url: '\u0000javascript:alert(1)',
+      }),
+    ).toBe('');
+    expect(
+      renderHandlebarsTemplate('{{url}}', {
+        url: 'javascript&colon;alert(1)',
+      }),
+    ).toBe('');
+    expect(
+      renderHandlebarsTemplate('{{url}}', {
+        url: 'javascript&#58;alert(1)',
+      }),
+    ).toBe('');
+    expect(
+      renderHandlebarsTemplate('{{url}}', {
+        url: 'javascript&#x3a;alert(1)',
+      }),
+    ).toBe('');
+    expect(
+      renderHandlebarsTemplate('{{url}}', {
+        url: 'java\u200Bscript:alert(1)',
+      }),
+    ).toBe('');
+  });
+
+  it('rejects unescaped mustache forms (3+ braces or {{&)', () => {
+    const cases = [
+      '<a href="{{{url}}}">x</a>',
+      '{{{{raw}}}}{{url}}{{{{/raw}}}}',
+      '<a href="{{&url}}">x</a>',
+    ];
+    for (const content of cases) {
+      expect(() =>
+        renderHandlebarsTemplate(content, { url: 'https://ok.example' }),
+      ).toThrow(EmailRequestError);
+    }
+    try {
+      renderHandlebarsTemplate('<a href="{{{url}}}">x</a>', {
+        url: 'https://ok.example',
+      });
+    } catch (error) {
+      expect(error).toMatchObject({
+        message: expect.stringContaining('Unescaped Handlebars'),
+        status: 400,
+      });
+    }
+  });
+
   it('sanitizes unsafe URL schemes inside arrays', () => {
     expect(
       renderHandlebarsTemplate('{{#each links}}{{this}}{{/each}}', {

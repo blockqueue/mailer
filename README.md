@@ -55,7 +55,7 @@ The repo includes a working example under [examples/notifier-service](examples/n
 docker compose up --build bq-example-notifier-service
 ```
 
-Compose loads placeholders from [`examples/notifier-service/.env.example`](examples/notifier-service/.env.example). Copy that file and point `env_file` at your own values before deploying anywhere outside local development. Do not set `CONFIG_PATH` / `TEMPLATES_DIR` for the baked example image.
+Compose loads placeholders from [`apps/notifier/.env.example`](apps/notifier/.env.example). Copy that file and point `env_file` at your own values before deploying anywhere outside local development. Do not set `CONFIG_PATH` / `TEMPLATES_DIR` for the baked example image.
 
 That builds the slim notifier runtime plus a consumer image with compiled templates and example config. For a minimal hand-rolled setup:
 
@@ -425,10 +425,10 @@ Variables in MJML and HTML templates use [Handlebars](https://handlebarsjs.com/)
 {{/if}}
 ```
 
-- `{{value}}` is HTML-escaped; use `{{{value}}}` only for trusted HTML.
+- `{{value}}` is HTML-escaped. Anything that opts out of escaping (`{{{...}}}`, `{{{{...}}}}`, `{{&...}}`) is rejected.
 - Missing variables return `400`.
 - Arrays/objects are supported for helpers like `{{#each}}` / `{{#if}}`.
-- Unsafe URL schemes (`javascript:`, `data:`, `vbscript:`) in string values are blanked.
+- Unsafe URL schemes (`javascript:`, `data:`, `vbscript:`) in string values are blanked, including whitespace/control/HTML-entity obfuscation.
 
 ### HTML Template (`index.html`)
 
