@@ -1,26 +1,15 @@
 import 'dotenv/config';
 
 import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
-import { sendEmailController } from './controllers/email.controller';
-import { sendSmsController } from './controllers/sms.controller';
-import { auditLogMiddleware } from './middleware/auditLog';
-import { authMiddleware } from './middleware/auth';
-import { requestValidationMiddleware } from './middleware/requestValidation';
-import type { AppEnv } from './types/hono';
-import type { SendEmailRequest, SendSmsRequest } from './types/request';
+import { createApp } from './app';
 import { getErrorMessage } from './utils/errors/error-details';
-import { requireParsedBody } from './utils/http/require-parsed-body';
 import { loadConfig } from './utils/loaders/config.loader';
 import { TemplateLoader } from './utils/loaders/template.loader';
 import { logger } from './utils/logger';
 import { validateAccountReferences } from './utils/validateAccountRefs';
 
-const app = new Hono<AppEnv>();
-
 let config: ReturnType<typeof loadConfig>;
 let templateLoader: TemplateLoader;
-let emailConfigured = false;
 
 try {
   config = loadConfig();
@@ -28,7 +17,7 @@ try {
 
   templateLoader = new TemplateLoader(config.email?.defaults?.renderer);
 
-  emailConfigured =
+  const emailConfigured =
     Boolean(config.email?.accounts) &&
     Object.keys(config.email?.accounts ?? {}).length > 0;
 
@@ -64,43 +53,7 @@ try {
   throw new Error(`Failed to initialize: ${errorMessage}`);
 }
 
-app.use('*', requestValidationMiddleware(config));
-app.use('*', auditLogMiddleware());
-
-app.get('/health', (c) => {
-  return c.json({ status: 'ok' });
-});
-
-app.get('/ready', (c) => {
-  if (emailConfigured && templateLoader.getTemplateIds().length === 0) {
-    return c.json(
-      { status: 'not_ready', message: 'No email templates loaded' },
-      503,
-    );
-  }
-  return c.json({ status: 'ok' });
-});
-
-app.post('/email/send', authMiddleware(config), async (c) => {
-  const parsed = requireParsedBody(c);
-  if (!parsed.ok) {
-    return parsed.response;
-  }
-  return sendEmailController(
-    c,
-    parsed.value as SendEmailRequest,
-    config,
-    templateLoader,
-  );
-});
-
-app.post('/sms/send', authMiddleware(config), async (c) => {
-  const parsed = requireParsedBody(c);
-  if (!parsed.ok) {
-    return parsed.response;
-  }
-  return sendSmsController(c, parsed.value as SendSmsRequest, config);
-});
+const app = createApp(config, templateLoader);
 
 const port = Number(process.env.PORT ?? 3000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {

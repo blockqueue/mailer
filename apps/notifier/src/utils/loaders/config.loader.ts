@@ -6,16 +6,17 @@ import type { GlobalConfig } from '../../types/config';
 import { getErrorMessage } from '../errors/error-details';
 import { loadYamlWithEnv } from './yaml.loader';
 
-const CONFIG_PATH = process.env.CONFIG_PATH ?? '/config/config.yaml';
+export function loadConfig(configPath?: string): GlobalConfig {
+  const resolvedPath =
+    configPath ?? process.env.CONFIG_PATH ?? '/config/config.yaml';
 
-export function loadConfig(): GlobalConfig {
-  if (!fs.existsSync(CONFIG_PATH)) {
+  if (!fs.existsSync(resolvedPath)) {
     throw new Error(
-      `Config file not found at ${CONFIG_PATH}. Bake config into the image (see examples/notifier-service) or set CONFIG_PATH for local development.`,
+      `Config file not found at ${resolvedPath}. Bake config into the image (see examples/notifier-service) or set CONFIG_PATH for local development.`,
     );
   }
 
-  const config = loadYamlWithEnv(CONFIG_PATH) as GlobalConfig;
+  const config = loadYamlWithEnv(resolvedPath) as GlobalConfig;
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!config.auth || typeof config.auth !== 'object') {

@@ -5,8 +5,9 @@ import { getErrorLogFields, getErrorMessage } from '../errors/error-details';
 import { logger } from '../logger';
 import { loadYamlWithEnv } from './yaml.loader';
 
-const TEMPLATES_DIR = process.env.TEMPLATES_DIR ?? '/app/templates';
-const IS_DEV = process.env.NODE_ENV === 'development';
+function isDev(): boolean {
+  return process.env.NODE_ENV === 'development';
+}
 
 export function findTemplateYamlFiles(rootDir: string): string[] {
   const results: string[] = [];
@@ -42,9 +43,15 @@ export class TemplateLoader {
     TemplateConfig & { templatePath: string }
   >();
   private defaultRenderer?: 'react-email' | 'mjml' | 'html';
+  private templatesDir: string;
 
-  constructor(defaultRenderer?: 'react-email' | 'mjml' | 'html') {
+  constructor(
+    defaultRenderer?: 'react-email' | 'mjml' | 'html',
+    templatesDir?: string,
+  ) {
     this.defaultRenderer = defaultRenderer;
+    this.templatesDir =
+      templatesDir ?? process.env.TEMPLATES_DIR ?? '/app/templates';
   }
 
   loadAllTemplates(): {
@@ -52,9 +59,9 @@ export class TemplateLoader {
     failureCount: number;
     failures: { templateId: string; error: string }[];
   } {
-    if (!fs.existsSync(TEMPLATES_DIR)) {
+    if (!fs.existsSync(this.templatesDir)) {
       logger.warn(
-        { templatesDir: TEMPLATES_DIR },
+        { templatesDir: this.templatesDir },
         'Templates directory not found. For production, bake compiled templates into the image (see examples/notifier-service). For local API dev, set TEMPLATES_DIR to your templates/ folder.',
       );
       return {
@@ -69,7 +76,7 @@ export class TemplateLoader {
       };
     }
 
-    const yamlFiles = findTemplateYamlFiles(TEMPLATES_DIR);
+    const yamlFiles = findTemplateYamlFiles(this.templatesDir);
     const failures: { templateId: string; error: string }[] = [];
     const seenIds = new Map<string, string>();
 
@@ -187,7 +194,7 @@ export class TemplateLoader {
       const source = path.join(templateDir, 'index.tsx');
       const compiled = path.join(templateDir, 'index.mjs');
 
-      if (IS_DEV && fs.existsSync(source)) {
+      if (isDev() && fs.existsSync(source)) {
         return source;
       }
       if (fs.existsSync(compiled)) {

@@ -18,7 +18,7 @@ function isRendererType(value: unknown): value is RendererType {
   return value === 'react-email' || value === 'mjml' || value === 'html';
 }
 
-class CompileError extends Error {
+export class CompileError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'CompileError';
@@ -193,8 +193,7 @@ async function compileTemplateYaml(
   return config.id;
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
+export async function runCompileTemplates(args: string[]): Promise<void> {
   if (args.includes('-h') || args.includes('--help')) {
     printUsage();
     return;
@@ -256,8 +255,23 @@ async function main(): Promise<void> {
   console.log(`\nCompiled ${String(successCount)} template(s) → ${outputDir}`);
 }
 
-main().catch((error: unknown) => {
-  console.error(getErrorMessage(error, String(error)));
-  // eslint-disable-next-line n/no-process-exit -- CLI
-  process.exit(1);
-});
+function isCliEntry(): boolean {
+  const entry = process.argv[1];
+  if (!entry) {
+    return false;
+  }
+  const base = path.basename(entry);
+  return (
+    base === 'compile-templates.ts' ||
+    base === 'compile-templates.mjs' ||
+    base === 'compile-templates.js'
+  );
+}
+
+if (isCliEntry()) {
+  runCompileTemplates(process.argv.slice(2)).catch((error: unknown) => {
+    console.error(getErrorMessage(error, String(error)));
+    // eslint-disable-next-line n/no-process-exit -- CLI
+    process.exit(1);
+  });
+}

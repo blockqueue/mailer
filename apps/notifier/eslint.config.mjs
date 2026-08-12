@@ -12,7 +12,7 @@ const baseConfigArray = Array.isArray(baseConfig) ? baseConfig : [baseConfig];
 export default [
   ...baseConfigArray,
   {
-    ignores: ["**/*.mjs"],
+    ignores: ["**/*.mjs", "**/*.test.ts", "vitest.config.ts", "test/**"],
   },
   {
     languageOptions: {

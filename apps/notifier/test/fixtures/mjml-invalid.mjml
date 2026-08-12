@@ -1,0 +1,5 @@
+<mjml>
+  <mj-body>
+    <mj-bogus>Your code is {{code}}</mj-bogus>
+  </mj-body>
+</mjml>
