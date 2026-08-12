@@ -60,9 +60,8 @@ export function loadConfig(): GlobalConfig {
             ZeptomailEmailClient.validateCredentials(accountConfig);
             break;
           default: {
-            const _exhaustive: never = accountConfig;
             throw new Error(
-              `Unknown email account type: ${String(_exhaustive)}`,
+              `Unknown email account type: ${String(accountConfig satisfies never)}`,
             );
           }
         }

@@ -148,7 +148,9 @@ function validateSendMailOptions(options: SendMailOptions): void {
       );
     }
   } catch (error: unknown) {
-    if (error instanceof EmailRequestError) throw error;
+    if (error instanceof EmailRequestError) {
+      throw error;
+    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     throw new EmailRequestError(message, 400);
   }

@@ -20,8 +20,9 @@ export function getRenderer(type: RendererType): Renderer {
     case 'html':
       return new HtmlRenderer();
     default: {
-      const _exhaustive: never = type;
-      throw new Error(`Unknown renderer type: ${String(_exhaustive)}`);
+      throw new Error(
+        `Unknown renderer type: ${String(type satisfies never)}`,
+      );
     }
   }
 }

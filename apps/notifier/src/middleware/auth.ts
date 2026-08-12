@@ -7,7 +7,9 @@ import { verifySignature } from '../utils/verifySignature';
 function secureCompareApiKey(provided: string, expected: string): boolean {
   const providedBuf = Buffer.from(provided);
   const expectedBuf = Buffer.from(expected);
-  if (providedBuf.length !== expectedBuf.length) return false;
+  if (providedBuf.length !== expectedBuf.length) {
+    return false;
+  }
   return crypto.timingSafeEqual(providedBuf, expectedBuf);
 }
 

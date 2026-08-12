@@ -28,7 +28,7 @@
     "zod": "^4.2.1"
   },
   "devDependencies": {
-    "@hono/eslint-config": "^2.0.3",
+    "@hono/eslint-config": "^2.1.1",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.19.3",
     "@types/nodemailer": "^7.0.4",
@@ -37,7 +37,7 @@
     "esbuild": "^0.27.2",
     "eslint": "^9.39.1",
     "tsx": "^4.7.1",
-    "typescript": "^5.9.2"
+    "typescript": "6.0.3"
   },
   "engines": {
     "node": ">=24"

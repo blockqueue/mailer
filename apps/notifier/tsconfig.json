@@ -9,7 +9,9 @@
     "moduleResolution": "bundler",
     "declaration": false,
     "sourceMap": false,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "types": ["node"],
+    "rootDir": "./src"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

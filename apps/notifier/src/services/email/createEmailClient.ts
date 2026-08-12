@@ -14,8 +14,9 @@ export function createEmailClient(
       return new ZeptomailEmailClient(accountConfig);
 
     default: {
-      const _exhaustive: never = accountConfig;
-      throw new Error(`Unknown email client type: ${String(_exhaustive)}`);
+      throw new Error(
+        `Unknown email client type: ${String(accountConfig satisfies never)}`,
+      );
     }
   }
 }

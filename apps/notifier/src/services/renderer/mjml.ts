@@ -51,13 +51,11 @@ function resolveMjml2Html(module: unknown): Mjml2Html {
   if (typeof module === 'function') {
     return module as Mjml2Html;
   }
-  if (
-    module &&
-    typeof module === 'object' &&
-    'default' in module &&
-    typeof (module as { default: unknown }).default === 'function'
-  ) {
-    return (module as { default: Mjml2Html }).default;
+  if (module && typeof module === 'object' && 'default' in module) {
+    const defaultExport = module.default;
+    if (typeof defaultExport === 'function') {
+      return defaultExport as Mjml2Html;
+    }
   }
   throw new Error('Invalid mjml module shape');
 }

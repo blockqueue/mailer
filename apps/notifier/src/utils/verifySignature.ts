@@ -15,7 +15,9 @@ export function verifySignature(opts: VerifySignatureOptions): boolean {
   const { payload, signature, secret, tolerance = 300, options } = opts;
   const { algorithm = 'sha512', encoding = 'hex' } = options ?? {};
 
-  if (!signature || !secret) return false;
+  if (!signature || !secret) {
+    return false;
+  }
 
   const parts = signature.split(',');
   let timestamp: number | null = null;
@@ -30,7 +32,9 @@ export function verifySignature(opts: VerifySignatureOptions): boolean {
     }
   }
 
-  if (!timestamp || !signatureValue) return false;
+  if (!timestamp || !signatureValue) {
+    return false;
+  }
 
   if (timestamp > 1e12) {
     logger.warn(
@@ -55,7 +59,9 @@ export function verifySignature(opts: VerifySignatureOptions): boolean {
   const expectedBuf = Buffer.from(expectedSignature, encoding);
 
   // timingSafeEqual throws if buffer lengths differ; treat as invalid signature.
-  if (signatureBuf.length !== expectedBuf.length) return false;
+  if (signatureBuf.length !== expectedBuf.length) {
+    return false;
+  }
 
   return crypto.timingSafeEqual(signatureBuf, expectedBuf);
 }
