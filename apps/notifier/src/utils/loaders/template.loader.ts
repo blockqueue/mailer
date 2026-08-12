@@ -147,10 +147,13 @@ export class TemplateLoader {
 
     const rendererType = config.renderer ?? this.defaultRenderer;
 
-    if (
-      rendererType &&
-      !['react-email', 'mjml', 'html'].includes(rendererType)
-    ) {
+    if (!rendererType) {
+      throw new Error(
+        `Template "${config.id}" has no renderer and no default renderer is configured in email.defaults.renderer`,
+      );
+    }
+
+    if (!['react-email', 'mjml', 'html'].includes(rendererType)) {
       throw new Error(
         `Template "${config.id}" has invalid renderer: ${rendererType}`,
       );
@@ -177,7 +180,7 @@ export class TemplateLoader {
 
   private resolveTemplateFile(
     templateDir: string,
-    rendererType: 'react-email' | 'mjml' | 'html' | undefined,
+    rendererType: 'react-email' | 'mjml' | 'html',
   ): string {
     if (rendererType === 'react-email') {
       const source = path.join(templateDir, 'index.tsx');

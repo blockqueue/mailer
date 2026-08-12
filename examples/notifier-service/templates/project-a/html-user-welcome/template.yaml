@@ -2,6 +2,7 @@ id: html-user-welcome
 renderer: html
 schema:
   type: object
+  additionalProperties: false
   required:
     - userName
     - appName

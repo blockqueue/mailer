@@ -4,9 +4,6 @@ export interface SmsOptions {
   to: string | string[];
   body: string;
   from?: string;
-  version?: 'v3' | 'v4';
-  channel?: 'dnd' | 'generic';
-  messageType?: 'plain' | 'unicode';
 }
 
 export interface SmsSendResult {
@@ -14,12 +11,15 @@ export interface SmsSendResult {
   success: boolean;
 }
 
-export abstract class SmsClient<T extends SmsAccountConfig = SmsAccountConfig> {
-  protected config: T;
+export abstract class SmsClient<
+  TConfig extends SmsAccountConfig = SmsAccountConfig,
+  TOptions extends SmsOptions = SmsOptions,
+> {
+  protected config: TConfig;
 
-  constructor(config: T) {
+  constructor(config: TConfig) {
     this.config = config;
   }
 
-  abstract send(options: SmsOptions): Promise<SmsSendResult>;
+  abstract send(options: TOptions): Promise<SmsSendResult>;
 }

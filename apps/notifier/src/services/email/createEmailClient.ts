@@ -1,11 +1,10 @@
 import type { EmailAccountConfig } from '../../types/config';
-import type { EmailClient } from './base-client';
 import { SesEmailClient } from './ses-client';
 import { ZeptomailEmailClient } from './zeptomail-client';
 
 export function createEmailClient(
   accountConfig: EmailAccountConfig,
-): EmailClient {
+): SesEmailClient | ZeptomailEmailClient {
   switch (accountConfig.type) {
     case 'ses':
       return new SesEmailClient(accountConfig);

@@ -1,9 +1,9 @@
 import type { SmsAccountConfig } from '../../types/config';
 import type { SendSmsRequest } from '../../types/request';
-import type { SmsClient } from './base-client';
+import type { TermiiSmsClient } from './termii-client';
 
 export async function sendSms(
-  client: SmsClient,
+  client: TermiiSmsClient,
   request: SendSmsRequest,
   accountConfig: SmsAccountConfig,
 ): Promise<{ messageId: string; success: boolean }> {

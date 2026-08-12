@@ -7,6 +7,11 @@ import { toArray } from '../../utils/to-array';
 import type { EmailOptions, SendResult } from './base-client';
 import { EmailClient } from './base-client';
 
+export interface ZeptomailEmailOptions extends EmailOptions {
+  fromName?: string;
+  bounceAddress?: string;
+}
+
 interface ZeptomailSendResponse {
   data?: {
     code?: string;
@@ -18,7 +23,10 @@ interface ZeptomailSendResponse {
   object?: string;
 }
 
-export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
+export class ZeptomailEmailClient extends EmailClient<
+  ZeptomailAccountConfig,
+  ZeptomailEmailOptions
+> {
   private readonly client: AxiosInstance;
   private readonly fromAddress: string;
 
@@ -47,16 +55,16 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
     }
   }
 
-  async send(options: EmailOptions): Promise<SendResult> {
+  async send(options: ZeptomailEmailOptions): Promise<SendResult> {
     try {
       const toAddresses = toArray(options.to);
       if (!toAddresses || toAddresses.length === 0) {
-        throw new Error('At least one recipient is required');
+        throw new EmailRequestError('At least one recipient is required', 400);
       }
 
       const fromAddress = options.from || this.fromAddress;
       if (!fromAddress) {
-        throw new Error('From address is required');
+        throw new EmailRequestError('From address is required', 400);
       }
 
       const parsedFrom = parseEmailAddress(fromAddress);
@@ -99,8 +107,9 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
           } else if (Buffer.isBuffer(att.content)) {
             content = att.content.toString('base64');
           } else {
-            throw new Error(
+            throw new EmailRequestError(
               `Invalid attachment content for ${att.filename ?? 'unknown'}`,
+              400,
             );
           }
 

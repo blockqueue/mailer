@@ -427,7 +427,9 @@ Variables in MJML templates use `{{variableName}}` syntax.
 </html>
 ```
 
-Variables in HTML templates use `{{variableName}}` syntax.
+Variables in HTML templates use `{{variableName}}` syntax. Every variable referenced in the template must be present in the request `payload` with a string, number, or boolean value. Missing or unsupported variables return `400`.
+
+Template JSON Schemas reject unknown payload properties by default (unless `additionalProperties: true` is set explicitly).
 
 ## API Reference
 
@@ -571,7 +573,10 @@ Use top-level `await` so signing finishes before the request is sent (Postman v1
   - `bcc` (optional): BCC recipient(s) - string or array of strings
   - `replyTo` (optional): Reply-to email address
   - `attachments` (optional): Array of attachment objects
-  - Provider-specific extras may be accepted depending on the account type
+  - `fromName` (Zeptomail only): display name for the sender
+  - `bounceAddress` (Zeptomail only): bounce address
+
+Unknown fields, and Zeptomail-only fields used with an SES account, are rejected with `400`.
 
 **Note**: The `to` field accepts either a single email string or an array of email addresses for multiple recipients.
 
@@ -597,6 +602,24 @@ The system resolves configuration values in the following priority order:
 
 Send an SMS via a configured SMS account (Termii). No templates.
 
+#### Headers
+
+Same authentication as email:
+
+**API Key:**
+
+```
+x-notifier-api-key: <your-api-key>
+```
+
+**HMAC Request Signing:**
+
+```
+x-notifier-signature: t=<timestamp>,v1=<signature>
+```
+
+See [POST /email/send](#post-emailsend) for signature generation examples.
+
 #### Request Body
 
 ```json
@@ -620,9 +643,13 @@ Send an SMS via a configured SMS account (Termii). No templates.
 - `account` (optional): SMS account id; falls back to `sms.defaults.account`
 - `sendOptions` (optional):
   - `version` (`v3` | `v4`): Termii API host; overrides account `version` (rejected if account `baseUrl` is set)
-  - `from`: sender ID override
+  - `from`: sender ID override (non-empty string)
   - `channel`: `dnd` | `generic`
   - `messageType`: `plain` | `unicode`
+
+Unknown fields inside `sendOptions` are rejected with `400`.
+
+`to` accepts a single phone string or an array of up to 100 numbers.
 
 #### Response
 
@@ -693,8 +720,12 @@ All email addresses are automatically validated before sending:
 
 - `400` - Bad Request
   - Missing required fields (`templateId`, `payload`, `to`, `body`, etc.)
-  - Payload validation failed (doesn't match template schema)
+  - Invalid field types (for example non-string `body` on SMS)
+  - Unknown fields in `sendOptions` or `sendMailOptions`
+  - Payload validation failed (doesn't match template schema, including unknown properties)
+  - Template variable missing from payload or unsupported variable type
   - Email validation failed (invalid email addresses)
+  - Invalid attachment content or metadata
   - No account specified and no default account configured
   - Unknown email/SMS account id
 - `401` - Unauthorized
@@ -708,7 +739,6 @@ All email addresses are automatically validated before sending:
 - `503` - Service Unavailable
   - Email or SMS channel not configured
 - `500` - Internal Server Error
-  - Template rendering errors
   - Other unexpected server errors
 
 ### Common Error Scenarios

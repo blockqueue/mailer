@@ -1,29 +1,45 @@
+import type {
+  TermiiApiVersion,
+  TermiiChannel,
+  TermiiMessageType,
+} from './config';
+
+export interface SendMailOptions {
+  from?: string;
+  to?: string | string[];
+  subject?: string;
+  cc?: string | string[];
+  bcc?: string | string[];
+  replyTo?: string;
+  attachments?: unknown[];
+}
+
+/** Zeptomail-only extras. Rejected when the resolved account is SES. */
+export interface ZeptomailSendMailOptions extends SendMailOptions {
+  fromName?: string;
+  bounceAddress?: string;
+}
+
 export interface SendEmailRequest {
   templateId: string;
   account?: string;
   payload: unknown;
-  sendMailOptions?: {
-    from?: string;
-    to?: string | string[];
-    subject?: string;
-    cc?: string | string[];
-    bcc?: string | string[];
-    replyTo?: string;
-    attachments?: unknown[];
-    [key: string]: unknown;
-  };
+  sendMailOptions?: ZeptomailSendMailOptions;
+}
+
+/** Termii-only until another SMS provider is added. */
+export interface TermiiSendOptions {
+  version?: TermiiApiVersion;
+  from?: string;
+  channel?: TermiiChannel;
+  messageType?: TermiiMessageType;
 }
 
 export interface SendSmsRequest {
   to: string | string[];
   body: string;
   account?: string;
-  sendOptions?: {
-    version?: 'v3' | 'v4';
-    from?: string;
-    channel?: 'dnd' | 'generic';
-    messageType?: 'plain' | 'unicode';
-  };
+  sendOptions?: TermiiSendOptions;
 }
 
 export type SendResponse =

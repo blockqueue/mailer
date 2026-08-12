@@ -5,6 +5,7 @@ import { getRenderer } from '../services/renderer';
 import type { GlobalConfig } from '../types/config';
 import type { SendEmailRequest, SendResponse } from '../types/request';
 import type { TemplateLoader } from '../utils/loaders/template.loader';
+import { validateEmailRequestFields } from '../utils/validation/email-request';
 import { validatePayload } from '../utils/validation/payload';
 import { handleChannelError } from './handle-channel-error';
 
@@ -29,6 +30,8 @@ export async function sendEmailController(
         400,
       );
     }
+
+    validateEmailRequestFields(body);
 
     if (
       body.payload === null ||
@@ -90,6 +93,8 @@ export async function sendEmailController(
         400,
       );
     }
+
+    validateEmailRequestFields(body, accountConfig);
 
     const rendererType = template.renderer ?? config.email.defaults?.renderer;
     if (!rendererType) {

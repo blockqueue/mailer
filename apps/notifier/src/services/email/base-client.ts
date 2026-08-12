@@ -5,13 +5,10 @@ export interface EmailOptions {
   to: string | string[];
   subject: string;
   html: string;
-  fromName?: string;
   cc?: string | string[];
   bcc?: string | string[];
   replyTo?: string;
-  bounceAddress?: string;
   attachments?: Attachment[];
-  [key: string]: unknown;
 }
 
 export interface Attachment {
@@ -19,7 +16,6 @@ export interface Attachment {
   content?: string | Buffer;
   path?: string;
   contentType?: string;
-  [key: string]: unknown;
 }
 
 export interface SendResult {
@@ -28,15 +24,16 @@ export interface SendResult {
 }
 
 export abstract class EmailClient<
-  T extends EmailAccountConfig = EmailAccountConfig,
+  TConfig extends EmailAccountConfig = EmailAccountConfig,
+  TOptions extends EmailOptions = EmailOptions,
 > {
-  protected config: T;
+  protected config: TConfig;
 
-  constructor(config: T) {
+  constructor(config: TConfig) {
     this.config = config;
   }
 
-  abstract send(options: EmailOptions): Promise<SendResult>;
+  abstract send(options: TOptions): Promise<SendResult>;
 
   close(): Promise<void> {
     return Promise.resolve();

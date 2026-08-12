@@ -3,6 +3,7 @@ import { createSmsClient } from '../services/sms/createSmsClient';
 import { sendSms } from '../services/sms/send';
 import type { GlobalConfig } from '../types/config';
 import type { SendResponse, SendSmsRequest } from '../types/request';
+import { validateSmsRequest } from '../utils/validation/sms';
 import { handleChannelError } from './handle-channel-error';
 
 export async function sendSmsController(
@@ -37,6 +38,8 @@ export async function sendSmsController(
         400,
       );
     }
+
+    validateSmsRequest(body, accountConfig);
 
     const client = createSmsClient(accountConfig);
     const result = await sendSms(client, body, accountConfig);

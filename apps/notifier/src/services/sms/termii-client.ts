@@ -1,8 +1,19 @@
-import type { TermiiAccountConfig } from '../../types/config';
+import type {
+  TermiiAccountConfig,
+  TermiiApiVersion,
+  TermiiChannel,
+  TermiiMessageType,
+} from '../../types/config';
 import { getErrorMessage } from '../../utils/errors/error-details';
 import { SmsRequestError } from '../../utils/errors/request-error';
 import type { SmsOptions, SmsSendResult } from './base-client';
 import { SmsClient } from './base-client';
+
+export interface TermiiSmsOptions extends SmsOptions {
+  version?: TermiiApiVersion;
+  channel?: TermiiChannel;
+  messageType?: TermiiMessageType;
+}
 
 const TERMII_HOSTS = {
   v3: 'https://v3.api.termii.com',
@@ -50,7 +61,10 @@ function resolveBaseUrl(
   return TERMII_HOSTS[version];
 }
 
-export class TermiiSmsClient extends SmsClient {
+export class TermiiSmsClient extends SmsClient<
+  TermiiAccountConfig,
+  TermiiSmsOptions
+> {
   static validateCredentials(config: TermiiAccountConfig): void {
     const type = (config as { type: string }).type;
     if (type !== 'termii') {
@@ -70,7 +84,7 @@ export class TermiiSmsClient extends SmsClient {
     }
   }
 
-  async send(options: SmsOptions): Promise<SmsSendResult> {
+  async send(options: TermiiSmsOptions): Promise<SmsSendResult> {
     const hasBaseUrl = Boolean(this.config.baseUrl?.trim());
     if (hasBaseUrl && options.version) {
       throw new SmsRequestError(
@@ -114,7 +128,7 @@ export class TermiiSmsClient extends SmsClient {
       );
     }
 
-    if (!options.body || options.body.trim().length === 0) {
+    if (typeof options.body !== 'string' || options.body.trim().length === 0) {
       throw new SmsRequestError('Missing required SMS field: body', 400);
     }
     const body = options.body.trim();

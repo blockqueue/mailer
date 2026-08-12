@@ -3,6 +3,7 @@ renderer: mjml
 account: ses
 schema:
   type: object
+  additionalProperties: false
   required:
     - userName
     - appName

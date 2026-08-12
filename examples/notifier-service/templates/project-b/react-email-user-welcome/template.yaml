@@ -2,6 +2,7 @@ id: react-email-user-welcome
 renderer: react-email
 schema:
   type: object
+  additionalProperties: false
   required:
     - userName
     - appName

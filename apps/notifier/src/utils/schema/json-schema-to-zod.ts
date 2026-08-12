@@ -95,7 +95,7 @@ export function jsonSchemaToZod(schema: unknown): z.ZodType {
     }
 
     let objectSchema = z.object(shape);
-    if (jsonSchema.additionalProperties === false) {
+    if (jsonSchema.additionalProperties !== true) {
       objectSchema = objectSchema.strict();
     }
 

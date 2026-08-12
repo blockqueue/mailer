@@ -80,11 +80,10 @@ export class SesEmailClient extends EmailClient<SesAccountConfig> {
               contentType: att.contentType,
             };
           }
-          return {
-            filename: att.filename,
-            content: '',
-            contentType: att.contentType,
-          };
+          throw new EmailRequestError(
+            `Invalid attachment content for ${att.filename ?? 'unknown'}`,
+            400,
+          );
         }),
       });
 
