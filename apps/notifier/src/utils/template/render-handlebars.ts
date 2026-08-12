@@ -2,6 +2,13 @@ import Handlebars from 'handlebars';
 import { EmailRequestError } from '../errors/request-error';
 import { logger } from '../logger';
 
+type CompiledTemplate = Handlebars.TemplateDelegate;
+
+const compiledCache = new Map<
+  string,
+  { mtimeMs: number; template: CompiledTemplate }
+>();
+
 function detectUnsafeUrlScheme(value: string): string | undefined {
   const normalized = value.trimStart().toLowerCase();
   if (normalized.startsWith('javascript:')) {
@@ -29,15 +36,8 @@ function sanitizeStringLeaf(value: string, path: string): string {
 }
 
 function sanitizePayload(value: unknown, path: string): unknown {
-  if (value === undefined) {
+  if (value === undefined || value === null) {
     return value;
-  }
-  if (value === null) {
-    const label = path || 'value';
-    throw new EmailRequestError(
-      `Template variable not found in payload: ${label}`,
-      400,
-    );
   }
   if (typeof value === 'string') {
     return sanitizeStringLeaf(value, path);
@@ -83,17 +83,47 @@ function mapHandlebarsError(error: unknown): never {
   throw new EmailRequestError(`Template render failed: ${message}`, 400);
 }
 
+function getCompiledTemplate(
+  content: string,
+  cacheKey?: string,
+  mtimeMs?: number,
+): CompiledTemplate {
+  if (cacheKey !== undefined && mtimeMs !== undefined) {
+    const hit = compiledCache.get(cacheKey);
+    if (hit?.mtimeMs === mtimeMs) {
+      return hit.template;
+    }
+  }
+
+  const template = Handlebars.compile(content, {
+    strict: true,
+    noEscape: false,
+  });
+
+  if (cacheKey !== undefined && mtimeMs !== undefined) {
+    compiledCache.set(cacheKey, { mtimeMs, template });
+  }
+
+  return template;
+}
+
+export function clearHandlebarsCompileCache(): void {
+  compiledCache.clear();
+}
+
 export function renderHandlebarsTemplate(
   content: string,
   payload: Record<string, unknown>,
+  options?: { cacheKey?: string; mtimeMs?: number },
 ): string {
   const sanitized = sanitizePayload(payload, '') as Record<string, unknown>;
 
   try {
-    const template = Handlebars.compile(content, {
-      strict: true,
-      noEscape: false,
-    });
+    const template = getCompiledTemplate(
+      content,
+      options?.cacheKey,
+      options?.mtimeMs,
+    );
     return template(sanitized);
   } catch (error) {
     mapHandlebarsError(error);

@@ -1,9 +1,11 @@
 services:
+  # Base image only — exit so compose does not boot the API without config.
   bq-notifier-build:
     build:
       context: .
       dockerfile: ./docker/notifier/Dockerfile.prod
     image: blockqueue/notifier:latest
+    command: ['-e', 'process.exit(0)']
 
   bq-example-notifier-service:
     build:
@@ -15,6 +17,7 @@ services:
     ports:
       - '3000:3000'
     env_file:
-      - ./apps/notifier/.env
+      - ./apps/notifier/.env.example
     depends_on:
-      - bq-notifier-build
+      bq-notifier-build:
+        condition: service_completed_successfully

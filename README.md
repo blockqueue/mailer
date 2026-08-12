@@ -52,11 +52,10 @@ This is infrastructure software, not a standalone product. We focus on making it
 The repo includes a working example under [examples/notifier-service](examples/notifier-service). From the repo root:
 
 ```bash
-docker compose build
-docker compose up bq-example-notifier-service
+docker compose up --build bq-example-notifier-service
 ```
 
-Replace the demo secrets in `docker-compose.yml` before deploying anywhere outside local development.
+Compose loads placeholders from [`examples/notifier-service/.env.example`](examples/notifier-service/.env.example). Copy that file and point `env_file` at your own values before deploying anywhere outside local development. Do not set `CONFIG_PATH` / `TEMPLATES_DIR` for the baked example image.
 
 That builds the slim notifier runtime plus a consumer image with compiled templates and example config. For a minimal hand-rolled setup:
 

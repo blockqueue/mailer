@@ -27,6 +27,7 @@ examples/notifier-service/
 ├── config/
 │   └── config.yaml              # auth + email + sms channels
 ├── scripts/
+├── .env.example                 # placeholder secrets for docker compose / docker run
 ├── Dockerfile
 ├── package.json
 └── Readme.md
@@ -64,20 +65,19 @@ docker build -t example-notifier-service \
 
 ## Run
 
+From the repo root (builds the base image, then the example; loads placeholders from [`.env.example`](.env.example)):
+
 ```bash
-docker run --rm -p 3000:3000 \
-  -e NOTIFIER_SIGNING_SECRET=dev-secret \
-  -e MAIL_FROM_EMAIL=noreply@example.com \
-  -e ZEPTOMAIL_API_KEY=dummy-zeptomail-api-key \
-  -e AWS_REGION=eu-west-2 \
-  -e AWS_ACCESS_KEY_ID=dummy-aws-access-key-id \
-  -e AWS_SECRET_ACCESS_KEY=dummy-aws-secret-access-key \
-  -e TERMII_API_KEY=dummy-termii-api-key \
-  -e TERMII_FROM=MyApp \
-  example-notifier-service
+docker compose up --build bq-example-notifier-service
 ```
 
-Use real provider credentials to actually send mail/SMS. Empty env values fail config substitution when those accounts are referenced in `config.yaml`.
+Or run the image directly:
+
+```bash
+docker run --rm -p 3000:3000 --env-file .env.example example-notifier-service
+```
+
+Copy `.env.example` and replace dummy values with real provider credentials to actually send mail/SMS. Do **not** set `CONFIG_PATH` / `TEMPLATES_DIR` for the baked image — config and templates are already at `/config/config.yaml` and `/app/templates`. Empty env values fail config substitution when those accounts are referenced in `config.yaml`.
 
 ## API smoke
 

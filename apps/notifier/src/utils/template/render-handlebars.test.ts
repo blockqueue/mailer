@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { EmailRequestError } from '../errors/request-error';
-import { renderHandlebarsTemplate } from './render-handlebars';
+import {
+  clearHandlebarsCompileCache,
+  renderHandlebarsTemplate,
+} from './render-handlebars';
 
 describe('renderHandlebarsTemplate', () => {
   it('substitutes string, number, and boolean values', () => {
@@ -35,10 +38,18 @@ describe('renderHandlebarsTemplate', () => {
     }
   });
 
-  it('throws when a variable is null', () => {
-    expect(() =>
-      renderHandlebarsTemplate('Hi {{name}}', { name: null }),
-    ).toThrow(EmailRequestError);
+  it('renders empty for null referenced values and allows unused nulls', () => {
+    expect(
+      renderHandlebarsTemplate('Hi {{name}}', {
+        name: null,
+        unused: null,
+      }),
+    ).toBe('Hi ');
+    expect(
+      renderHandlebarsTemplate('{{#if flag}}yes{{else}}no{{/if}}', {
+        flag: null,
+      }),
+    ).toBe('no');
   });
 
   it('supports nested paths', () => {
@@ -79,5 +90,29 @@ describe('renderHandlebarsTemplate', () => {
         links: ['https://ok.example', 'javascript:alert(1)'],
       }),
     ).toBe('https://ok.example');
+  });
+
+  it('reuses compiled templates when cache key and mtime match', () => {
+    clearHandlebarsCompileCache();
+    const content = 'Hello {{name}}';
+    const first = renderHandlebarsTemplate(
+      content,
+      { name: 'Ada' },
+      { cacheKey: 't1', mtimeMs: 1 },
+    );
+    const second = renderHandlebarsTemplate(
+      'Hello {{name}} IGNORE STALE SOURCE',
+      { name: 'Bob' },
+      { cacheKey: 't1', mtimeMs: 1 },
+    );
+    expect(first).toBe('Hello Ada');
+    expect(second).toBe('Hello Bob');
+
+    const third = renderHandlebarsTemplate(
+      'Hi {{name}}',
+      { name: 'Cara' },
+      { cacheKey: 't1', mtimeMs: 2 },
+    );
+    expect(third).toBe('Hi Cara');
   });
 });

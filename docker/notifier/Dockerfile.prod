@@ -1,7 +1,6 @@
 FROM node:24-alpine AS base
 
-# Turbo (and some native Node addons) need glibc compatibility on Alpine.
-# See https://turborepo.dev/docs/guides/tools/docker
+# glibc compat for turbo on Alpine — https://turborepo.dev/docs/guides/tools/docker
 RUN apk update && apk add --no-cache libc6-compat
 
 
@@ -32,8 +31,7 @@ COPY docker/notifier/package.runtime.json ./package.json
 COPY docker/notifier/stubs ./stubs
 COPY --from=builder /app/apps/notifier/dist ./dist
 
-# omit optional (e.g. handlebars→uglify-js); overrides stub prettier/js-beautify/htmlnano/cssnano
-# so we do not ship unused pretty/beautify/minify trees (~40MB). Keep ./stubs — npm links overrides there.
+# --omit=optional + stubs shrink unused prettier/beautify/minify trees.
 RUN npm install --omit=dev --omit=optional \
   && npm cache clean --force \
   && rm -rf /root/.npm /tmp/* \

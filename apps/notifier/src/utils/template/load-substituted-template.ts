@@ -7,6 +7,10 @@ export function loadSubstitutedTemplate(
   payload: Record<string, unknown>,
 ): string {
   const absolutePath = resolveTemplatePath(templatePath);
+  const { mtimeMs } = fs.statSync(absolutePath);
   const content = fs.readFileSync(absolutePath, 'utf-8');
-  return renderHandlebarsTemplate(content, payload);
+  return renderHandlebarsTemplate(content, payload, {
+    cacheKey: absolutePath,
+    mtimeMs,
+  });
 }
