@@ -2,11 +2,8 @@ import { render } from '@react-email/render';
 import { pathToFileURL } from 'node:url';
 import type { ReactElement } from 'react';
 import { resolveTemplatePath } from '../../utils/template/template-path';
+import { compileReactEmailForRuntime } from './compile-react-email';
 import type { Renderer } from './index';
-
-function isDev(): boolean {
-  return process.env.NODE_ENV === 'development';
-}
 
 type EmailComponent = (props: Record<string, unknown>) => ReactElement;
 interface EmailModule {
@@ -39,9 +36,13 @@ export class ReactEmailRenderer implements Renderer {
     payload: Record<string, unknown>,
   ): Promise<string> {
     const absolutePath = resolveTemplatePath(templatePath);
-    const baseUrl = pathToFileURL(absolutePath).href;
-    const moduleUrl = isDev() ? `${baseUrl}?t=${String(Date.now())}` : baseUrl;
-    const module = (await import(moduleUrl)) as EmailModule;
+    const modulePath = absolutePath.endsWith('.tsx')
+      ? await compileReactEmailForRuntime(absolutePath)
+      : absolutePath;
+
+    const module = (await import(
+      pathToFileURL(modulePath).href
+    )) as EmailModule;
 
     const EmailComponent = resolveEmailComponent(module);
     const emailElement = EmailComponent(payload);

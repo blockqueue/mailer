@@ -13,7 +13,7 @@ export function CompanyFooter() {
       <Text className="my-1 text-center text-xs">
         <Link
           href={config.blockQueueDomain}
-          className="text-blue-600 hover:underline"
+          className="text-blue-600 underline"
         >
           {config.blockQueueDomain}
         </Link>

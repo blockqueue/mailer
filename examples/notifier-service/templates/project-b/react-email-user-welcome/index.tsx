@@ -20,17 +20,16 @@ interface WelcomeEmailProps {
   appName: string;
   ctaUrl?: string;
 }
-
 export function Email(props: WelcomeEmailProps) {
   const { userName, appName, ctaUrl = config.blockQueueDomain } = props;
 
   return (
-    <Html>
-      <Head />
-      <Preview>
-        Welcome to {appName}, {userName} — your account is ready.
-      </Preview>
-      <TailwindWrapper>
+    <TailwindWrapper>
+      <Html>
+        <Head />
+        <Preview>
+          Welcome to {appName}, {userName} — your account is ready.
+        </Preview>
         <Body className="bg-zinc-100 font-sans text-zinc-900">
           <Container className="mx-auto my-8 max-w-[560px] overflow-hidden rounded-lg bg-white">
             <Section className="bg-zinc-900 px-8 py-6">
@@ -67,8 +66,8 @@ export function Email(props: WelcomeEmailProps) {
             </Section>
           </Container>
         </Body>
-      </TailwindWrapper>
-    </Html>
+      </Html>
+    </TailwindWrapper>
   );
 }
 

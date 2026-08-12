@@ -203,7 +203,7 @@ export class TemplateLoader {
       throw new Error(
         `React Email template not found in ${templateDir}. ` +
           'Production expects index.mjs (compile in your consumer Dockerfile; see examples/notifier-service). ' +
-          'Local API development uses index.tsx via `npm run dev` (tsx) when NODE_ENV=development.',
+          'Local development uses index.tsx when NODE_ENV=development (compiled with the same esbuild pipeline as production).',
       );
     }
 

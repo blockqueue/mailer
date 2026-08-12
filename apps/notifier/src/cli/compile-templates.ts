@@ -1,8 +1,8 @@
-import * as esbuild from 'esbuild';
 import yaml from 'js-yaml';
 import mjml2html from 'mjml';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { compileReactEmailEntry } from '../services/renderer/compile-react-email';
 import { getErrorMessage } from '../utils/errors/error-details';
 import { findTemplateYamlFiles } from '../utils/loaders/template.loader';
 
@@ -83,48 +83,6 @@ function resolveRenderer(
   return 'html';
 }
 
-async function compileReactEmail(
-  entryPath: string,
-  outfile: string,
-): Promise<void> {
-  ensureDir(path.dirname(outfile));
-
-  const nodePaths = [
-    path.resolve(process.cwd(), 'node_modules'),
-    path.resolve(process.cwd(), '../node_modules'),
-    path.resolve(process.cwd(), '../../node_modules'),
-  ].filter((p) => fs.existsSync(p));
-
-  const result = await esbuild.build({
-    entryPoints: [entryPath],
-    outfile,
-    bundle: true,
-    platform: 'node',
-    format: 'esm',
-    target: 'node24',
-    jsx: 'automatic',
-    jsxImportSource: 'react',
-    nodePaths,
-    external: [
-      'react',
-      'react-dom',
-      'react/jsx-runtime',
-      'react/jsx-dev-runtime',
-      '@react-email/render',
-    ],
-    logLevel: 'silent',
-    write: true,
-  });
-
-  if (result.errors.length > 0) {
-    const messages = await esbuild.formatMessages(result.errors, {
-      kind: 'error',
-      color: false,
-    });
-    throw new CompileError(messages.join('\n'));
-  }
-}
-
 function compileMjml(entryPath: string, outfile: string): void {
   const mjmlContent = fs.readFileSync(entryPath, 'utf-8');
   const { html, errors } = mjml2html(mjmlContent, {
@@ -170,7 +128,7 @@ async function compileTemplateYaml(
     if (!fs.existsSync(entry)) {
       throw new CompileError(`Template file not found: ${entry}`);
     }
-    await compileReactEmail(entry, path.join(outDir, 'index.mjs'));
+    await compileReactEmailEntry(entry, path.join(outDir, 'index.mjs'));
     outConfig.renderer = 'react-email';
   } else if (renderer === 'mjml') {
     const entry = path.join(templateDir, 'index.mjml');

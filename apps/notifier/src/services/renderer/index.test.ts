@@ -39,6 +39,15 @@ describe('renderers', () => {
     expect(html).toContain('Hello Ada');
   });
 
+  it('renders React Email source .tsx without a React import', async () => {
+    const html = await new ReactEmailRenderer().render(
+      path.join(templatesFixtureDir, 'react-email-welcome', 'index.tsx'),
+      { userName: 'Ada' },
+    );
+    expect(html).toContain('Hello');
+    expect(html).toContain('Ada');
+  });
+
   it('renders a React Email named Email export', async () => {
     const html = await new ReactEmailRenderer().render(
       path.join(fixturesDir, 'react-email-named.mjs'),
