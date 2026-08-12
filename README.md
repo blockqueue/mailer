@@ -163,11 +163,11 @@ Templates land under **`/app/templates`** so Node resolves `react` / `@react-ema
 
 ### Development vs production templates
 
-| Environment          | How you run                                                         | What loads                                                                             |
-| -------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| **Local API**        | `npm run dev` in `apps/notifier` (`NODE_ENV=development` + **tsx**) | Source `index.tsx` / `index.mjml` / `index.html` (set `TEMPLATES_DIR` / `CONFIG_PATH`) |
-| **Template preview** | `npm run dev` in your consumer (`email dev`)                        | React Email preview only — not the notifier API                                        |
-| **Production image** | Distroless final stage                                              | `index.mjs` (React Email) plus source `index.mjml` / `index.html`                      |
+| Environment          | How you run                                                                   | What loads                                                                             |
+| -------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Local API**        | `npm run dev` in `apps/notifier` (`NODE_ENV=development` + **tsx**)           | Source `index.tsx` / `index.mjml` / `index.html` (set `TEMPLATES_DIR` / `CONFIG_PATH`) |
+| **Template preview** | Consumer: `npm run dev` (both) or `preview:react-email` / `preview:mjml-html` | React Email (10001) and HTML/MJML Handlebars (10002) — not the API                     |
+| **Production image** | Distroless final stage                                                        | `index.mjs` (React Email) plus source `index.mjml` / `index.html`                      |
 
 The Distroless runtime includes `react` / `@react-email/render`, plus `handlebars` and `mjml` for HTML/MJML templates. It does **not** include `tsx` or `@react-email/components`. Do not set `NODE_ENV=development` on the baked image expecting raw `.tsx` to work — React Email still compiles to `index.mjs` at image build time. Distroless is for the **final** image only; React Email compilation uses a normal Node stage.
 

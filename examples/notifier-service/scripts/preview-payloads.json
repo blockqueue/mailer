@@ -1,0 +1,45 @@
+{
+  "html-user-welcome": {
+    "userName": "Test User",
+    "appName": "BlockQueue",
+    "supportEmail": "support@blockqueue.io"
+  },
+  "mjml-user-welcome": {
+    "userName": "Test User",
+    "appName": "BlockQueue",
+    "ctaUrl": "https://blockqueue.io",
+    "supportEmail": "support@blockqueue.io"
+  },
+  "mjml-login-otp": {
+    "userName": "Test User",
+    "appName": "BlockQueue",
+    "otpCode": "482913",
+    "expiresInMinutes": 10
+  },
+  "html-order-receipt": {
+    "orderId": "ORD-1001",
+    "customerName": "Test User",
+    "appName": "BlockQueue",
+    "lineItems": [
+      { "name": "USB-C Hub", "quantity": 1, "price": "$49.00" },
+      { "name": "Cable Pack", "quantity": 2, "price": "$24.00" }
+    ],
+    "total": "$73.00",
+    "shippingAddress": "311 Zik Avenue, Awka, Anambra State, Nigeria",
+    "isGift": true,
+    "trackingUrl": "https://blockqueue.io/orders/ORD-1001"
+  },
+  "mjml-order-receipt": {
+    "orderId": "ORD-1001",
+    "customerName": "Test User",
+    "appName": "BlockQueue",
+    "lineItems": [
+      { "name": "USB-C Hub", "quantity": 1, "price": "$49.00" },
+      { "name": "Cable Pack", "quantity": 2, "price": "$24.00" }
+    ],
+    "total": "$73.00",
+    "shippingAddress": "311 Zik Avenue, Awka, Anambra State, Nigeria",
+    "isGift": true,
+    "trackingUrl": "https://blockqueue.io/orders/ORD-1001"
+  }
+}

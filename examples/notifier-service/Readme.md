@@ -5,7 +5,7 @@ Canonical example of shipping your own templates on top of the BlockQueue notifi
 ## Workflow
 
 1. **Edit** source templates under `templates/` (`.tsx`, `.mjml`, or `.html`) — nested folders are fine; each `template.yaml` must have a unique `id`
-2. **Preview** React Email with `npm run dev` (`.tsx` only)
+2. **Preview** with `npm run dev` — React Email on :10001 and HTML/MJML on :10002 (or run either alone via `preview:react-email` / `preview:mjml-html`)
 3. **Build** a consumer image — Dockerfile packages templates into `/app/templates` (React Email → `index.mjs`; MJML/HTML copied for runtime Handlebars + MJML)
 
 Production always bakes templates into the image; volume mounts are not supported.
@@ -40,7 +40,14 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:10001](http://localhost:10001).
+Starts both preview servers:
+
+- React Email (`.tsx`) — http://localhost:10001
+- HTML / MJML (Handlebars) — http://localhost:10002
+
+Run one side only with `npm run preview:react-email` or `npm run preview:mjml-html`.
+
+Sample payloads for the static preview live in [`scripts/preview-payloads.json`](scripts/preview-payloads.json). Template edits reload the browser automatically.
 
 For local API + source templates, use `apps/notifier` with `npm run dev` and `.env` from `.env.example`.
 

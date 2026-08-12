@@ -13,7 +13,7 @@ const ORDER_RECEIPT_PAYLOAD = {
     { name: 'Cable Pack', quantity: 2, price: '$24.00' },
   ],
   total: '$73.00',
-  shippingAddress: '39 New Market Road, Onitsha, Anambra State, Nigeria',
+  shippingAddress: '311 Zik Avenue, Awka, Anambra State, Nigeria',
   isGift: true,
   trackingUrl: 'https://blockqueue.io/orders/ORD-1001',
 };
