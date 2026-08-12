@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
 function stripTrailingSlash(url) {
   return url.endsWith('/') ? url.slice(0, -1) : url;
@@ -36,4 +36,4 @@ async function sendSignedRequest(baseUrl, path, payload, secret) {
   console.log('Success:', data);
 }
 
-module.exports = { computeSignature, sendSignedRequest, stripTrailingSlash };
+export { computeSignature, sendSignedRequest, stripTrailingSlash };

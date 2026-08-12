@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EmailRequestError } from '../errors/request-error';
 import { parseEmailAddress } from '../parseEmailAddress';
 
 function isValidEmail(email: string): boolean {
@@ -20,7 +21,7 @@ export function validateEmailAddresses(
       fieldName === 'from'
         ? `Missing required field: '${fieldName}' in sendMailOptions. Provide it in request.sendMailOptions, template.from, or account.from`
         : `Missing required field: '${fieldName}' in sendMailOptions`;
-    throw new Error(errorMessage);
+    throw new EmailRequestError(errorMessage, 400);
   }
 
   if (!emails) {

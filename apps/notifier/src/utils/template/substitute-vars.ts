@@ -27,19 +27,25 @@ function escapeHtml(value: string): string {
   return result;
 }
 
-function hasUnsafeUrlScheme(value: string): boolean {
+function detectUnsafeUrlScheme(value: string): string | undefined {
   const normalized = value.trimStart().toLowerCase();
-  return (
-    normalized.startsWith('javascript:') ||
-    normalized.startsWith('data:') ||
-    normalized.startsWith('vbscript:')
-  );
+  if (normalized.startsWith('javascript:')) {
+    return 'javascript';
+  }
+  if (normalized.startsWith('data:')) {
+    return 'data';
+  }
+  if (normalized.startsWith('vbscript:')) {
+    return 'vbscript';
+  }
+  return undefined;
 }
 
-function sanitizeSubstitutedValue(value: string): string {
-  if (hasUnsafeUrlScheme(value)) {
+function sanitizeSubstitutedValue(value: string, varName: string): string {
+  const scheme = detectUnsafeUrlScheme(value);
+  if (scheme) {
     logger.warn(
-      { value },
+      { variable: varName, scheme },
       'Blocked unsafe URL scheme in template substitution',
     );
     return '';
@@ -64,7 +70,7 @@ export function substituteTemplateVars(
       typeof value === 'number' ||
       typeof value === 'boolean'
     ) {
-      return sanitizeSubstitutedValue(String(value));
+      return sanitizeSubstitutedValue(String(value), varName);
     }
     throw new EmailRequestError(
       `Template variable "${varName}" has unsupported type: ${typeof value}`,

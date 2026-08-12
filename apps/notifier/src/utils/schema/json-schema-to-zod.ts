@@ -46,8 +46,10 @@ function applyEnum(
   if (!Array.isArray(jsonSchema.enum) || jsonSchema.enum.length === 0) {
     return schema;
   }
-  const values = jsonSchema.enum as [string, ...string[]];
-  return z.enum(values);
+  const allowed = jsonSchema.enum;
+  return schema.refine((value) => allowed.includes(value), {
+    message: 'Invalid enum value',
+  });
 }
 
 export function jsonSchemaToZod(schema: unknown): z.ZodType {
@@ -111,18 +113,21 @@ export function jsonSchemaToZod(schema: unknown): z.ZodType {
   }
 
   if (jsonSchema.type === 'string') {
-    if (Array.isArray(jsonSchema.enum) && jsonSchema.enum.length > 0) {
-      return applyEnum(z.string(), jsonSchema);
-    }
-    return applyStringConstraints(z.string(), jsonSchema);
+    return applyEnum(
+      applyStringConstraints(z.string(), jsonSchema),
+      jsonSchema,
+    );
   }
 
   if (jsonSchema.type === 'number') {
-    return applyNumberBounds(z.number(), jsonSchema);
+    return applyEnum(applyNumberBounds(z.number(), jsonSchema), jsonSchema);
   }
 
   if (jsonSchema.type === 'integer') {
-    return applyNumberBounds(z.number().int(), jsonSchema);
+    return applyEnum(
+      applyNumberBounds(z.number().int(), jsonSchema),
+      jsonSchema,
+    );
   }
 
   if (jsonSchema.type === 'boolean') {
@@ -134,7 +139,7 @@ export function jsonSchemaToZod(schema: unknown): z.ZodType {
   }
 
   if (Array.isArray(jsonSchema.enum) && jsonSchema.enum.length > 0) {
-    return applyEnum(z.string(), jsonSchema);
+    return applyEnum(z.unknown(), jsonSchema);
   }
 
   return z.unknown();

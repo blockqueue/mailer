@@ -1,9 +1,7 @@
-const { sendSignedRequest } = require('./lib/notifier-client');
+import { sendSignedRequest } from './lib/notifier-client.js';
 
 const BASE_URL = process.env.NOTIFIER_BASE_URL || 'http://localhost:3000';
-const SECRET =
-  process.env.NOTIFIER_SIGNING_SECRET ||
-  'wefeqfdwfwrfqfweq9343rrwfeafeqr42r432ef';
+const SECRET = process.env.NOTIFIER_SIGNING_SECRET;
 const TO = process.env.TERMII_TO || '23490126727';
 const VERSION = process.env.TERMII_API_VERSION || 'v3';
 
@@ -18,6 +16,11 @@ const body = {
 };
 
 async function main() {
+  if (!SECRET) {
+    console.error('Error: NOTIFIER_SIGNING_SECRET is required');
+    process.exit(1);
+  }
+
   await sendSignedRequest(BASE_URL, '/sms/send', body, SECRET);
 }
 

@@ -17,7 +17,7 @@ services:
     environment:
       - NODE_ENV=production
       - LOG_LEVEL=info
-      - NOTIFIER_SIGNING_SECRET=wefeqfdwfwrfqfweq9343rrwfeafeqr42r432ef
+      - NOTIFIER_SIGNING_SECRET=${NOTIFIER_SIGNING_SECRET}
       - MAIL_FROM_EMAIL=noreply@example.com
       - ZEPTOMAIL_API_KEY=your-api-key
       - AWS_REGION=us-east-1

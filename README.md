@@ -97,6 +97,8 @@ sms:
 export NOTIFIER_API_KEY=your-api-key
 export MAIL_FROM_EMAIL=noreply@example.com
 export ZEPTOMAIL_API_KEY=your-zeptomail-key
+export TERMII_API_KEY=your-termii-key
+export TERMII_FROM=MyApp
 ```
 
 **Note**: All environment variables are optional. You only need to set the variables that you reference in your `config.yaml` file. Variable names are user-defined - use whatever names you prefer in your config.

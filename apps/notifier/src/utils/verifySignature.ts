@@ -20,19 +20,26 @@ export function verifySignature(opts: VerifySignatureOptions): boolean {
   }
 
   const parts = signature.split(',');
+  let timestampRaw: string | null = null;
   let timestamp: number | null = null;
   let signatureValue: string | null = null;
 
   for (const part of parts) {
     const [key, value] = part.split('=', 2);
     if (key === 't') {
+      timestampRaw = value;
       timestamp = parseInt(value, 10);
     } else if (key === 'v1') {
       signatureValue = value;
     }
   }
 
-  if (!timestamp || !signatureValue) {
+  if (
+    timestampRaw === null ||
+    timestamp === null ||
+    Number.isNaN(timestamp) ||
+    !signatureValue
+  ) {
     return false;
   }
 
@@ -51,14 +58,13 @@ export function verifySignature(opts: VerifySignatureOptions): boolean {
 
   const expectedSignature = crypto
     .createHmac(algorithm, secret)
-    .update(`${timestamp.toString()}.`)
+    .update(`${timestampRaw}.`)
     .update(payload)
     .digest(encoding);
 
   const signatureBuf = Buffer.from(signatureValue, encoding);
   const expectedBuf = Buffer.from(expectedSignature, encoding);
 
-  // timingSafeEqual throws if buffer lengths differ; treat as invalid signature.
   if (signatureBuf.length !== expectedBuf.length) {
     return false;
   }

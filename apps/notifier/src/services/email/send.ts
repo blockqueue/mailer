@@ -165,8 +165,7 @@ function validateSendMailOptions(options: MergedSendMailOptions): void {
     if (error instanceof EmailRequestError) {
       throw error;
     }
-    const message = getErrorMessage(error);
-    throw new EmailRequestError(message, 400);
+    throw new EmailRequestError(getErrorMessage(error), 400);
   }
 }
 

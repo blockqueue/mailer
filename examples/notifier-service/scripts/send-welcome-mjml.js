@@ -1,9 +1,7 @@
-const { sendSignedRequest } = require('./lib/notifier-client');
+import { sendSignedRequest } from './lib/notifier-client.js';
 
 const BASE_URL = process.env.NOTIFIER_BASE_URL || 'http://localhost:3000';
-const SECRET =
-  process.env.NOTIFIER_SIGNING_SECRET ||
-  'wefeqfdwfwrfqfweq9343rrwfeafeqr42r432ef';
+const SECRET = process.env.NOTIFIER_SIGNING_SECRET;
 const TO_EMAIL = process.env.TEST_TO_EMAIL || 'email@example.com';
 
 const body = {

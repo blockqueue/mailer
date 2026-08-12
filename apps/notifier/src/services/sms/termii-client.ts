@@ -4,6 +4,7 @@ import type {
   TermiiChannel,
   TermiiMessageType,
 } from '../../types/config';
+import { PROVIDER_REQUEST_TIMEOUT_MS } from '../../utils/constants';
 import { getErrorMessage } from '../../utils/errors/error-details';
 import { SmsRequestError } from '../../utils/errors/request-error';
 import type { SmsOptions, SmsSendResult } from './base-client';
@@ -182,6 +183,7 @@ export class TermiiSmsClient extends SmsClient<
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(PROVIDER_REQUEST_TIMEOUT_MS),
       });
     } catch (error: unknown) {
       const detail = getErrorMessage(error);

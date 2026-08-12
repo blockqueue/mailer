@@ -1,6 +1,7 @@
 import type { AxiosInstance } from 'axios';
 import axios from 'axios';
 import type { ZeptomailAccountConfig } from '../../types/config';
+import { PROVIDER_REQUEST_TIMEOUT_MS } from '../../utils/constants';
 import { EmailRequestError } from '../../utils/errors/request-error';
 import { parseEmailAddress } from '../../utils/parseEmailAddress';
 import { toArray } from '../../utils/to-array';
@@ -23,6 +24,14 @@ interface ZeptomailSendResponse {
   object?: string;
 }
 
+function nonEmpty(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return trimmed;
+}
+
 export class ZeptomailEmailClient extends EmailClient<
   ZeptomailAccountConfig,
   ZeptomailEmailOptions
@@ -38,6 +47,7 @@ export class ZeptomailEmailClient extends EmailClient<
 
     this.client = axios.create({
       baseURL: 'https://api.zeptomail.com/v1.1',
+      timeout: PROVIDER_REQUEST_TIMEOUT_MS,
       headers: {
         Authorization: config.apiKey,
         Accept: 'application/json',
@@ -71,8 +81,8 @@ export class ZeptomailEmailClient extends EmailClient<
 
       const parsedFrom = parseEmailAddress(fromAddress);
       const fromName =
-        options.fromName?.trim() ??
-        this.config.fromName?.trim() ??
+        nonEmpty(options.fromName) ??
+        nonEmpty(this.config.fromName) ??
         parsedFrom.name ??
         parsedFrom.address;
 
@@ -94,6 +104,9 @@ export class ZeptomailEmailClient extends EmailClient<
         ? parseEmailAddress(options.replyTo)
         : undefined;
 
+      const bounceAddress =
+        nonEmpty(options.bounceAddress) ?? nonEmpty(this.config.bounceAddress);
+
       const payload = {
         from: { address: parsedFrom.address, name: fromName },
         to: toAddresses.map((address) => ({ email_address: { address } })),
@@ -107,8 +120,8 @@ export class ZeptomailEmailClient extends EmailClient<
             },
           ],
         }),
-        ...(options.bounceAddress && {
-          bounce_address: parseEmailAddress(options.bounceAddress).address,
+        ...(bounceAddress && {
+          bounce_address: parseEmailAddress(bounceAddress).address,
         }),
         subject: options.subject,
         htmlbody: options.html,

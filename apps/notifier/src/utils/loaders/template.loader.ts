@@ -81,6 +81,7 @@ export class TemplateLoader {
 
         const existingPath = seenIds.get(templateId);
         if (existingPath) {
+          this.templates.delete(templateId);
           throw new Error(
             `Duplicate template id "${templateId}" (also at ${existingPath})`,
           );

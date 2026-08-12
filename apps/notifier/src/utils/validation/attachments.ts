@@ -23,6 +23,22 @@ function attachmentByteSize(content: string | Buffer): number {
   return Buffer.from(content, 'base64').length;
 }
 
+function isSafeFilename(name: unknown): name is string {
+  if (typeof name !== 'string' || name.trim().length === 0) {
+    return false;
+  }
+  if (name.includes('/') || name.includes('\\')) {
+    return false;
+  }
+  for (const ch of name) {
+    const code = ch.charCodeAt(0);
+    if (code < 32 || code === 127) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function normalizeMimeType(contentType: string): string {
   return contentType.split(';', 1)[0].trim().toLowerCase();
 }
@@ -60,6 +76,9 @@ export function validateAttachments(
     }
 
     const att = raw as Attachment;
+    if (!isSafeFilename(att.filename)) {
+      att.filename = undefined;
+    }
     const label = att.filename ?? `index ${String(i)}`;
 
     if (!att.contentType) {

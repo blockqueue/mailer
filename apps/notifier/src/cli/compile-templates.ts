@@ -14,6 +14,10 @@ interface TemplateYaml {
   [key: string]: unknown;
 }
 
+function isRendererType(value: unknown): value is RendererType {
+  return value === 'react-email' || value === 'mjml' || value === 'html';
+}
+
 class CompileError extends Error {
   constructor(message: string) {
     super(message);
@@ -45,6 +49,15 @@ function loadTemplateYaml(filePath: string): TemplateYaml {
   const parsed = yaml.load(raw);
   if (!parsed || typeof parsed !== 'object') {
     throw new CompileError(`Failed to parse ${filePath}`);
+  }
+  const config = parsed as Record<string, unknown>;
+  const renderer = config.renderer;
+  if (renderer !== undefined && !isRendererType(renderer)) {
+    throw new CompileError(
+      typeof renderer === 'string'
+        ? `Unsupported renderer "${renderer}" in ${filePath}`
+        : `Invalid renderer in ${filePath}`,
+    );
   }
   return parsed as TemplateYaml;
 }

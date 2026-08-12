@@ -4,7 +4,9 @@ import { sendEmail } from '../services/email/send';
 import { getRenderer } from '../services/renderer';
 import type { GlobalConfig } from '../types/config';
 import type { SendEmailRequest, SendResponse } from '../types/request';
+import { getErrorLogFields } from '../utils/errors/error-details';
 import type { TemplateLoader } from '../utils/loaders/template.loader';
+import { logger } from '../utils/logger';
 import { validateEmailRequestFields } from '../utils/validation/email-request';
 import { validatePayload } from '../utils/validation/payload';
 import { handleChannelError } from './handle-channel-error';
@@ -127,7 +129,11 @@ export async function sendEmailController(
     });
   } finally {
     if (client) {
-      await client.close();
+      try {
+        await client.close();
+      } catch (error: unknown) {
+        logger.error(getErrorLogFields(error), 'Failed to close email client');
+      }
     }
   }
 }
