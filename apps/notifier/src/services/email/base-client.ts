@@ -8,6 +8,7 @@ export interface EmailOptions {
   cc?: string | string[];
   bcc?: string | string[];
   replyTo?: string;
+  bounceAddress?: string;
   attachments?: Attachment[];
   [key: string]: unknown;
 }

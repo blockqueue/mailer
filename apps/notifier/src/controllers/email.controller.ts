@@ -7,6 +7,7 @@ import type { SendEmailRequest, SendResponse } from '../types/request';
 import type { TemplateLoader } from '../utils/loaders/template.loader';
 import { logger } from '../utils/logger';
 import { validatePayload } from '../utils/validation/payload';
+import { EmailRequestError } from '../services/email/errors';
 
 export async function sendEmailController(
   c: Context,
@@ -14,6 +15,7 @@ export async function sendEmailController(
   config: GlobalConfig,
   templateLoader: TemplateLoader,
 ): Promise<Response> {
+  let client: ReturnType<typeof createEmailClient> | undefined;
   try {
     if (!config.email?.accounts) {
       return c.json(
@@ -98,11 +100,8 @@ export async function sendEmailController(
 
     const html = await renderer.render(template.templatePath, payload);
 
-    const client = createEmailClient(accountConfig);
-
+    client = createEmailClient(accountConfig);
     const result = await sendEmail(client, html, body, template, accountConfig);
-
-    await client.close();
 
     const response: SendResponse = {
       success: true,
@@ -111,6 +110,12 @@ export async function sendEmailController(
 
     return c.json(response);
   } catch (error: unknown) {
+    if (error instanceof EmailRequestError) {
+      return c.json(
+        { success: false, message: error.message },
+        error.status,
+      );
+    }
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
@@ -128,5 +133,9 @@ export async function sendEmailController(
       },
       500,
     );
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 }

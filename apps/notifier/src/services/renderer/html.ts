@@ -3,6 +3,25 @@ import { logger } from '../../utils/logger';
 import { resolveTemplatePath } from '../../utils/template/template-path';
 import type { Renderer } from './index';
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (ch) => {
+    switch (ch) {
+      case '&':
+        return '&amp;';
+      case '<':
+        return '&lt;';
+      case '>':
+        return '&gt;';
+      case '"':
+        return '&quot;';
+      case "'":
+        return '&#39;';
+      default:
+        return ch;
+    }
+  });
+}
+
 export class HtmlRenderer implements Renderer {
   render(
     templatePath: string,
@@ -25,7 +44,7 @@ export class HtmlRenderer implements Renderer {
           typeof value === 'number' ||
           typeof value === 'boolean'
         ) {
-          return String(value);
+          return escapeHtml(String(value));
         }
         logger.warn(
           { variable: varName, type: typeof value },

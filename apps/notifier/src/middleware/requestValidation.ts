@@ -23,9 +23,19 @@ export function requestValidationMiddleware(config: GlobalConfig) {
         }
 
         try {
-          const parsedBody = JSON.parse(rawBody) as Record<string, unknown>;
+          const parsedBody = JSON.parse(rawBody) as unknown;
+          if (
+            parsedBody === null ||
+            typeof parsedBody !== 'object' ||
+            Array.isArray(parsedBody)
+          ) {
+            return c.json(
+              { error: 'Request JSON body must be an object' },
+              400,
+            );
+          }
           c.set('rawBody', rawBody);
-          c.set('parsedBody', parsedBody);
+          c.set('parsedBody', parsedBody as Record<string, unknown>);
         } catch {
           return c.json({ error: 'Invalid JSON in request body' }, 400);
         }

@@ -54,9 +54,18 @@ export class TemplateLoader {
     if (!fs.existsSync(TEMPLATES_DIR)) {
       logger.warn(
         { templatesDir: TEMPLATES_DIR },
-        'Templates directory not found. For production, bake compiled templates into the image (see examples/notifier-service). For local API dev, set TEMPLATES_DIR to your emails/ folder.',
+        'Templates directory not found. For production, bake compiled templates into the image (see examples/notifier-service). For local API dev, set TEMPLATES_DIR to your templates/ folder.',
       );
-      return { successCount: 0, failureCount: 0, failures: [] };
+      return {
+        successCount: 0,
+        failureCount: 1,
+        failures: [
+          {
+            templateId: '__no_templates__',
+            error: 'Templates directory not found',
+          },
+        ],
+      };
     }
 
     const yamlFiles = findTemplateYamlFiles(TEMPLATES_DIR);

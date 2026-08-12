@@ -61,6 +61,7 @@ export class SesEmailClient extends EmailClient<SesAccountConfig> {
         to: toAddresses?.join(', ') ?? '',
         ...(ccAddresses && { cc: ccAddresses.join(', ') }),
         ...(bccAddresses && { bcc: bccAddresses.join(', ') }),
+        ...(options.replyTo && { replyTo: options.replyTo }),
         subject: options.subject,
         html: options.html,
         attachments: options.attachments?.map((att) => ({

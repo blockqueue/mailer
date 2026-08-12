@@ -35,14 +35,15 @@ try {
   if (emailConfigured) {
     const loadResult = templateLoader.loadAllTemplates();
 
-    if (loadResult.successCount === 0 && loadResult.failureCount > 0) {
+    if (loadResult.successCount === 0) {
       logger.error(
         {
           failureCount: loadResult.failureCount,
           failures: loadResult.failures,
         },
-        'No templates loaded successfully. Server will start but email sending will fail.',
+        'No email templates loaded. Email sending cannot work.',
       );
+      throw new Error('Failed to load email templates');
     }
   } else {
     logger.info('Email channel not configured; skipping template load');

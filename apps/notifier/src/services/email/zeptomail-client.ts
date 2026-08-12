@@ -60,9 +60,30 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
         throw new Error('From address is required');
       }
 
+      const ccAddresses = this.toArray(options.cc);
+      const bccAddresses = this.toArray(options.bcc);
+
+      const mapRecipient = (email: string) => ({
+        email_address: {
+          address: email,
+          name: email,
+        },
+      });
+
       const payload = {
         from: { address: fromAddress, name: 'noreply' },
         to: toAddresses.map((address) => ({ email_address: { address } })),
+        ...(ccAddresses && { cc: ccAddresses.map(mapRecipient) }),
+        ...(bccAddresses && { bcc: bccAddresses.map(mapRecipient) }),
+        ...(options.replyTo && {
+          reply_to: [
+            {
+              address: options.replyTo,
+              name: options.replyTo,
+            },
+          ],
+        }),
+        ...(options.bounceAddress && { bounce_address: options.bounceAddress }),
         subject: options.subject,
         htmlbody: options.html,
         attachments: options.attachments?.map((att) => {

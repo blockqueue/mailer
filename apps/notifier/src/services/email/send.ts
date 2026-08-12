@@ -4,6 +4,7 @@ import type { TemplateConfig } from '../../types/template';
 import { logger } from '../../utils/logger';
 import { validateEmailAddresses } from '../../utils/validation/email';
 import type { EmailClient, EmailOptions } from './base-client';
+import { EmailRequestError } from './errors';
 
 interface SendMailOptions {
   from?: string;
@@ -12,6 +13,7 @@ interface SendMailOptions {
   cc?: string | string[];
   bcc?: string | string[];
   replyTo?: string;
+  bounceAddress?: string;
   html?: string;
   attachments?: unknown[];
   [key: string]: unknown;
@@ -43,8 +45,7 @@ function mergeSendMailOptions(
       key === 'region' ||
       key === 'apiKey' ||
       key === 'accessKeyId' ||
-      key === 'secretAccessKey' ||
-      key === 'bounceAddress'
+      key === 'secretAccessKey'
     ) {
       continue;
     }
@@ -80,41 +81,59 @@ function mergeSendMailOptions(
 }
 
 function validateSendMailOptions(options: SendMailOptions): void {
-  const validationResults: { field: string; invalid: string[] }[] = [
-    {
-      field: 'from',
-      invalid: validateEmailAddresses(options.from, 'from', true),
-    },
-    {
-      field: 'to',
-      invalid: validateEmailAddresses(options.to, 'to', true),
-    },
-    {
-      field: 'cc',
-      invalid: validateEmailAddresses(options.cc, 'cc'),
-    },
-    {
-      field: 'bcc',
-      invalid: validateEmailAddresses(options.bcc, 'bcc'),
-    },
-    {
-      field: 'replyTo',
-      invalid: validateEmailAddresses(options.replyTo, 'replyTo'),
-    },
-  ];
+  try {
+    const validationResults: { field: string; invalid: string[] }[] = [
+      {
+        field: 'from',
+        invalid: validateEmailAddresses(options.from, 'from', true),
+      },
+      {
+        field: 'to',
+        invalid: validateEmailAddresses(options.to, 'to', true),
+      },
+      {
+        field: 'cc',
+        invalid: validateEmailAddresses(options.cc, 'cc'),
+      },
+      {
+        field: 'bcc',
+        invalid: validateEmailAddresses(options.bcc, 'bcc'),
+      },
+      {
+        field: 'replyTo',
+        invalid: validateEmailAddresses(options.replyTo, 'replyTo'),
+      },
+      {
+        field: 'bounceAddress',
+        invalid: validateEmailAddresses(
+          options.bounceAddress,
+          'bounceAddress',
+        ),
+      },
+    ];
 
-  const errors = validationResults
-    .filter((result) => result.invalid.length > 0)
-    .map((result) => {
-      const fieldLabel =
-        result.field === 'from' || result.field === 'replyTo'
-          ? 'address'
-          : 'addresses';
-      return `Invalid '${result.field}' ${fieldLabel}: ${result.invalid.join(', ')}`;
-    });
+    const errors = validationResults
+      .filter((result) => result.invalid.length > 0)
+      .map((result) => {
+        const fieldLabel =
+          result.field === 'from' ||
+          result.field === 'replyTo' ||
+          result.field === 'bounceAddress'
+            ? 'address'
+            : 'addresses';
+        return `Invalid '${result.field}' ${fieldLabel}: ${result.invalid.join(', ')}`;
+      });
 
-  if (errors.length > 0) {
-    throw new Error(`Email validation failed: ${errors.join('; ')}`);
+    if (errors.length > 0) {
+      throw new EmailRequestError(
+        `Email validation failed: ${errors.join('; ')}`,
+        400,
+      );
+    }
+  } catch (error: unknown) {
+    if (error instanceof EmailRequestError) throw error;
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    throw new EmailRequestError(message, 400);
   }
 }
 
@@ -134,13 +153,13 @@ export async function sendEmail(
   validateSendMailOptions(sendMailOptions);
 
   if (!sendMailOptions.from) {
-    throw new Error('Missing required field: from');
+    throw new EmailRequestError('Missing required field: from', 400);
   }
   if (!sendMailOptions.to) {
-    throw new Error('Missing required field: to');
+    throw new EmailRequestError('Missing required field: to', 400);
   }
   if (!sendMailOptions.subject) {
-    throw new Error('Missing required field: subject');
+    throw new EmailRequestError('Missing required field: subject', 400);
   }
 
   const emailOptions: EmailOptions = {
@@ -151,6 +170,9 @@ export async function sendEmail(
     ...(sendMailOptions.cc && { cc: sendMailOptions.cc }),
     ...(sendMailOptions.bcc && { bcc: sendMailOptions.bcc }),
     ...(sendMailOptions.replyTo && { replyTo: sendMailOptions.replyTo }),
+    ...(sendMailOptions.bounceAddress && {
+      bounceAddress: sendMailOptions.bounceAddress,
+    }),
     ...(sendMailOptions.attachments && {
       attachments: sendMailOptions.attachments as EmailOptions['attachments'],
     }),
@@ -173,6 +195,6 @@ export async function sendEmail(
       },
       'Failed to send email',
     );
-    throw new Error(`Failed to send email: ${errorMessage}`);
+    throw new EmailRequestError(`Failed to send email: ${errorMessage}`, 502);
   }
 }

@@ -6,7 +6,6 @@ function extractRequestMetadata(c: Context): {
   accountId?: string;
 } {
   const method = c.req.method;
-  const path = c.req.path;
 
   if (method !== 'POST') {
     return {};
@@ -16,8 +15,12 @@ function extractRequestMetadata(c: Context): {
     'parsedBody',
   ) as Record<string, unknown> | undefined;
 
-  if (!parsedBody || typeof parsedBody !== 'object') {
-    throw new Error(`Missing parsedBody for POST request to ${path}.`);
+  if (
+    !parsedBody ||
+    typeof parsedBody !== 'object' ||
+    Array.isArray(parsedBody)
+  ) {
+    return {};
   }
 
   return {

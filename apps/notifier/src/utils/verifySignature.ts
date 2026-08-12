@@ -51,8 +51,11 @@ export function verifySignature(opts: VerifySignatureOptions): boolean {
     .update(payload)
     .digest(encoding);
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signatureValue, encoding),
-    Buffer.from(expectedSignature, encoding),
-  );
+  const signatureBuf = Buffer.from(signatureValue, encoding);
+  const expectedBuf = Buffer.from(expectedSignature, encoding);
+
+  // timingSafeEqual throws if buffer lengths differ; treat as invalid signature.
+  if (signatureBuf.length !== expectedBuf.length) return false;
+
+  return crypto.timingSafeEqual(signatureBuf, expectedBuf);
 }
