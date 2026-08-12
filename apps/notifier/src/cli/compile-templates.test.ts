@@ -29,14 +29,15 @@ describe('runCompileTemplates', () => {
     );
     expect(htmlYaml).toMatch(/renderer: html/);
 
-    const mjmlHtml = await import('node:fs/promises').then((fs) =>
-      fs.readFile(path.join(outputDir, 'mjml-otp', 'index.html'), 'utf-8'),
+    const mjmlSource = await import('node:fs/promises').then((fs) =>
+      fs.readFile(path.join(outputDir, 'mjml-otp', 'index.mjml'), 'utf-8'),
     );
-    expect(mjmlHtml).toContain('<html');
+    expect(mjmlSource).toContain('<mjml>');
+    expect(mjmlSource).toContain('{{code}}');
     const mjmlYaml = await import('node:fs/promises').then((fs) =>
       fs.readFile(path.join(outputDir, 'mjml-otp', 'template.yaml'), 'utf-8'),
     );
-    expect(mjmlYaml).toMatch(/renderer: html/);
+    expect(mjmlYaml).toMatch(/renderer: mjml/);
 
     const reactModule = await import('node:fs/promises').then((fs) =>
       fs.stat(path.join(outputDir, 'react-email-welcome', 'index.mjs')),
@@ -87,23 +88,29 @@ describe('runCompileTemplates', () => {
     }
   });
 
-  it('fails MJML compilation when mjml reports errors', async () => {
-    const inputDir = await createTempDir('bad-mjml-');
-    outputDir = await createTempDir('bad-mjml-out-');
+  it('copies MJML source without baking to HTML', async () => {
+    const inputDir = await createTempDir('copy-mjml-');
+    outputDir = await createTempDir('copy-mjml-out-');
     try {
       await writeTempFile(
         inputDir,
-        'bad/template.yaml',
-        'id: bad-mjml\nrenderer: mjml\nschema:\n  type: object\n',
+        'otp/template.yaml',
+        'id: copy-mjml\nrenderer: mjml\nschema:\n  type: object\n',
       );
       await writeTempFile(
         inputDir,
-        'bad/index.mjml',
-        '<mjml><mj-body><mj-bogus /></mj-body></mjml>',
+        'otp/index.mjml',
+        '<mjml><mj-body><mj-text>{{code}}</mj-text></mj-body></mjml>',
       );
-      await expect(runCompileTemplates([inputDir, outputDir])).rejects.toThrow(
-        /failed to compile/,
+      await runCompileTemplates([inputDir, outputDir]);
+      const copied = await import('node:fs/promises').then((fs) =>
+        fs.readFile(path.join(outputDir, 'otp', 'index.mjml'), 'utf-8'),
       );
+      expect(copied).toContain('{{code}}');
+      const yaml = await import('node:fs/promises').then((fs) =>
+        fs.readFile(path.join(outputDir, 'otp', 'template.yaml'), 'utf-8'),
+      );
+      expect(yaml).toMatch(/renderer: mjml/);
     } finally {
       await removeTempDir(inputDir);
     }

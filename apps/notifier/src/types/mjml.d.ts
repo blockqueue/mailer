@@ -21,7 +21,11 @@ declare module 'mjml' {
     errors: MjmlError[];
   }
 
-  function mjml2html(mjml: string, options?: MjmlOptions): MjmlResponse;
+  /** MJML 5 returns a Promise. */
+  function mjml2html(
+    mjml: string,
+    options?: MjmlOptions,
+  ): Promise<MjmlResponse>;
 
   export = mjml2html;
 }

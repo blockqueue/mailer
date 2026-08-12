@@ -12,7 +12,13 @@ describe('findTemplateYamlFiles', () => {
   it('finds nested templates and skips underscore directories', () => {
     const files = findTemplateYamlFiles(templatesFixtureDir);
     const ids = files.map((file) => path.basename(path.dirname(file))).sort();
-    expect(ids).toEqual(['html-welcome', 'mjml-otp', 'react-email-welcome']);
+    expect(ids).toEqual([
+      'html-order-receipt',
+      'html-welcome',
+      'mjml-order-receipt',
+      'mjml-otp',
+      'react-email-welcome',
+    ]);
   });
 });
 
@@ -32,7 +38,9 @@ describe('TemplateLoader', () => {
     const result = loader.loadAllTemplates();
     expect(result.failureCount).toBe(0);
     expect(loader.getTemplateIds().sort()).toEqual([
+      'html-order-receipt',
       'html-welcome',
+      'mjml-order-receipt',
       'mjml-otp',
       'react-email-welcome',
     ]);

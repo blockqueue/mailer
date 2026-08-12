@@ -1,13 +1,14 @@
 FROM node:24-alpine AS base
 
+# glibc compat for turbo on Alpine — https://turborepo.dev/docs/guides/tools/docker
+RUN apk update && apk add --no-cache libc6-compat
+
 
 FROM base AS prune
 
-RUN apk add --no-cache gcompat
-
 WORKDIR /app
 COPY . .
-RUN npm i --global turbo@2.7.0
+RUN npm i --global turbo@2.10.9
 RUN turbo prune notifier --docker
 
 
@@ -27,9 +28,11 @@ FROM node:24-bookworm-slim AS runtime-deps
 WORKDIR /app
 
 COPY docker/notifier/package.runtime.json ./package.json
+COPY docker/notifier/stubs ./stubs
 COPY --from=builder /app/apps/notifier/dist ./dist
 
-RUN npm install --omit=dev \
+# --omit=optional + stubs shrink unused prettier/beautify/minify trees.
+RUN npm install --omit=dev --omit=optional \
   && npm cache clean --force \
   && rm -rf /root/.npm /tmp/* \
   && mkdir -p /app/templates \

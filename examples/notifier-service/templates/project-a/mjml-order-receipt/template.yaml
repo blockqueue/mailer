@@ -1,0 +1,43 @@
+id: mjml-order-receipt
+renderer: mjml
+schema:
+  type: object
+  additionalProperties: false
+  required:
+    - orderId
+    - customerName
+    - appName
+    - lineItems
+    - total
+  properties:
+    orderId:
+      type: string
+    customerName:
+      type: string
+    appName:
+      type: string
+    lineItems:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        additionalProperties: false
+        required:
+          - name
+          - quantity
+          - price
+        properties:
+          name:
+            type: string
+          quantity:
+            type: number
+          price:
+            type: string
+    total:
+      type: string
+    shippingAddress:
+      type: string
+    isGift:
+      type: boolean
+    trackingUrl:
+      type: string

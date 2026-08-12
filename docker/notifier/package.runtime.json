@@ -5,6 +5,14 @@
   "dependencies": {
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "@react-email/render": "1.4.0"
+    "@react-email/render": "1.4.0",
+    "handlebars": "4.7.9",
+    "mjml": "5.4.0"
+  },
+  "overrides": {
+    "prettier": "file:./stubs/prettier",
+    "js-beautify": "file:./stubs/js-beautify",
+    "htmlnano": "file:./stubs/htmlnano",
+    "cssnano": "file:./stubs/cssnano"
   }
 }

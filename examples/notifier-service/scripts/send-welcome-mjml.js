@@ -4,6 +4,20 @@ const BASE_URL = process.env.NOTIFIER_BASE_URL || 'http://localhost:3000';
 const SECRET = process.env.NOTIFIER_SIGNING_SECRET || 'local-signing-secret';
 const TO_EMAIL = process.env.TEST_TO_EMAIL || 'email@example.com';
 
+const ORDER_RECEIPT_PAYLOAD = {
+  orderId: 'ORD-1001',
+  customerName: 'Test User',
+  appName: 'BlockQueue',
+  lineItems: [
+    { name: 'USB-C Hub', quantity: 1, price: '$49.00' },
+    { name: 'Cable Pack', quantity: 2, price: '$24.00' },
+  ],
+  total: '$73.00',
+  shippingAddress: '311 Zik Avenue, Awka, Anambra State, Nigeria',
+  isGift: true,
+  trackingUrl: 'https://blockqueue.io/orders/ORD-1001',
+};
+
 /** @type {Record<string, { label: string; templateId: string; subject: string; payload: Record<string, unknown> }>} */
 const TEMPLATES = {
   1: {
@@ -48,12 +62,32 @@ const TEMPLATES = {
       ctaUrl: 'https://blockqueue.io',
     },
   },
+  5: {
+    label: 'mjml-order-receipt (MJML + Handlebars)',
+    templateId: 'mjml-order-receipt',
+    subject: 'Order ORD-1001 confirmed - test from script',
+    payload: ORDER_RECEIPT_PAYLOAD,
+  },
+  6: {
+    label: 'html-order-receipt (HTML + Handlebars)',
+    templateId: 'html-order-receipt',
+    subject: 'Order ORD-1001 confirmed (HTML) - test from script',
+    payload: ORDER_RECEIPT_PAYLOAD,
+  },
+  7: {
+    label: 'react-email-order-receipt (React Email)',
+    templateId: 'react-email-order-receipt',
+    subject: 'Order ORD-1001 confirmed (React Email) - test from script',
+    payload: ORDER_RECEIPT_PAYLOAD,
+  },
 };
 
 const DEFAULT_CHOICE = '1';
 
 function printUsage() {
-  console.error('Usage: node scripts/send-welcome-mjml.js [--sample=1|2|3|4]');
+  console.error(
+    'Usage: node scripts/send-welcome-mjml.js [--sample=1|2|3|4|5|6|7]',
+  );
   console.error('');
   console.error('Templates:');
   for (const [key, template] of Object.entries(TEMPLATES)) {

@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { substituteTemplateVars } from './substitute-vars';
+import { renderHandlebarsTemplate } from './render-handlebars';
 import { resolveTemplatePath } from './template-path';
 
 export function loadSubstitutedTemplate(
@@ -7,6 +7,10 @@ export function loadSubstitutedTemplate(
   payload: Record<string, unknown>,
 ): string {
   const absolutePath = resolveTemplatePath(templatePath);
+  const { mtimeMs } = fs.statSync(absolutePath);
   const content = fs.readFileSync(absolutePath, 'utf-8');
-  return substituteTemplateVars(content, payload);
+  return renderHandlebarsTemplate(content, payload, {
+    cacheKey: absolutePath,
+    mtimeMs,
+  });
 }

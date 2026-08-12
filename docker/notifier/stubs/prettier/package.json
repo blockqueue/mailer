@@ -1,0 +1,12 @@
+{
+  "name": "prettier",
+  "version": "3.9.6",
+  "private": true,
+  "description": "Identity stub for prettier (import-only; pretty:true unused)",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./standalone": "./standalone.js",
+    "./plugins/html": "./plugins/html.js"
+  }
+}

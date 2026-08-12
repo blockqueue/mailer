@@ -214,7 +214,7 @@ export class TemplateLoader {
       }
       throw new Error(
         `Template file not found: ${source}. ` +
-          'For production, compile MJML to HTML with compile-templates (renderer becomes html).',
+          'MJML templates are copied as index.mjml and compiled at request time (Handlebars then mjml2html).',
       );
     }
 

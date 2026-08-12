@@ -1,21 +1,26 @@
 {
-  "name": "example-notifier-service",
+  "name": "example",
   "version": "0.0.0",
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "NODE_ENV=development email dev -p 10001 --dir=templates",
+    "dev": "concurrently -k -n react-email,mjml-html -c cyan,magenta \"npm:preview:react-email\" \"npm:preview:mjml-html\"",
+    "preview:react-email": "NODE_ENV=development email dev -p 10001 --dir=templates",
+    "preview:mjml-html": "node scripts/preview-static.js",
     "export": "email export"
   },
   "dependencies": {
     "@react-email/components": "^0.5.7",
+    "handlebars": "^4.7.9",
+    "mjml": "^5.4.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
-    "@react-email/preview-server": "^4.3.2",
+    "@react-email/ui": "^6.9.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "react-email": "^4.3.2"
+    "concurrently": "^9.2.4",
+    "react-email": "^6.9.2"
   }
 }

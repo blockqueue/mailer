@@ -2,8 +2,7 @@ export const blockQueueDomain = 'https://blockqueue.io';
 export const logoUrl = `${blockQueueDomain}/images/logo.png`;
 export const appName = 'BlockQueue';
 export const companyName = 'BlockQueue Systems Limited';
-export const companyAddress =
-  '39 New Market Road, Onitsha, Anambra State, Nigeria';
+export const companyAddress = '311 Zik Avenue, Awka, Anambra State, Nigeria';
 
 export const socials = {
   twitter: {
