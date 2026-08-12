@@ -17,10 +17,13 @@ examples/notifier-service/
 ├── templates/                   # Source templates (nested OK; unique ids)
 │   ├── project-a/
 │   │   ├── html-user-welcome/
-│   │   └── mjml-user-welcome/
+│   │   ├── html-order-receipt/  # Handlebars #each / #if
+│   │   ├── mjml-user-welcome/
+│   │   └── mjml-order-receipt/  # Handlebars #each / #if
 │   └── project-b/
 │       ├── mjml-login-otp/
-│       └── react-email-user-welcome/
+│       ├── react-email-user-welcome/
+│       └── react-email-order-receipt/  # map + conditional JSX
 ├── config/
 │   └── config.yaml              # auth + email + sms channels
 ├── scripts/
@@ -72,11 +75,14 @@ Use real provider credentials to actually send mail/SMS. Empty env values fail c
 ## API smoke
 
 ```bash
-# Email — optional --sample=1|2|3|4 (default: 1 = mjml-user-welcome)
+# Email — optional --sample=1..7 (default: 1 = mjml-user-welcome)
 NOTIFIER_SIGNING_SECRET=… node scripts/send-welcome-mjml.js
 NOTIFIER_SIGNING_SECRET=… node scripts/send-welcome-mjml.js --sample=2   # html-user-welcome
 NOTIFIER_SIGNING_SECRET=… node scripts/send-welcome-mjml.js --sample=3   # mjml-login-otp
 NOTIFIER_SIGNING_SECRET=… node scripts/send-welcome-mjml.js --sample=4   # react-email-user-welcome
+NOTIFIER_SIGNING_SECRET=… node scripts/send-welcome-mjml.js --sample=5   # mjml-order-receipt (line items)
+NOTIFIER_SIGNING_SECRET=… node scripts/send-welcome-mjml.js --sample=6   # html-order-receipt (line items)
+NOTIFIER_SIGNING_SECRET=… node scripts/send-welcome-mjml.js --sample=7   # react-email-order-receipt (line items)
 
 # SMS (Termii)
 NOTIFIER_SIGNING_SECRET=… node scripts/send-sms.js
