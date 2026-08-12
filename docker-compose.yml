@@ -25,3 +25,5 @@ services:
       - AWS_SECRET_ACCESS_KEY=your-secret-access-key
       - TERMII_API_KEY=your-termii-api-key
       - TERMII_FROM=MyApp
+    depends_on:
+      - bq-notifier-build

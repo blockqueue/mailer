@@ -22,7 +22,7 @@ export function verifySignature(opts: VerifySignatureOptions): boolean {
   let signatureValue: string | null = null;
 
   for (const part of parts) {
-    const [key, value] = part.split('=');
+    const [key, value] = part.split('=', 2);
     if (key === 't') {
       timestamp = parseInt(value, 10);
     } else if (key === 'v1') {

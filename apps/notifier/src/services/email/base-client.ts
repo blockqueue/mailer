@@ -5,6 +5,7 @@ export interface EmailOptions {
   to: string | string[];
   subject: string;
   html: string;
+  fromName?: string;
   cc?: string | string[];
   bcc?: string | string[];
   replyTo?: string;

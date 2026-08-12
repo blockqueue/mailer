@@ -69,6 +69,7 @@ export interface SmsChannelConfig {
 export interface RequestValidationConfig {
   maxBodySize?: number;
   maxAttachmentSize?: number;
+  maxAttachments?: number;
   allowedAttachmentMimeTypes?: string[];
 }
 

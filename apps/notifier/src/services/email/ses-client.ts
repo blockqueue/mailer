@@ -65,11 +65,29 @@ export class SesEmailClient extends EmailClient<SesAccountConfig> {
         ...(options.replyTo && { replyTo: options.replyTo }),
         subject: options.subject,
         html: options.html,
-        attachments: options.attachments?.map((att) => ({
-          filename: att.filename,
-          content: att.content as string,
-          contentType: att.contentType,
-        })),
+        attachments: options.attachments?.map((att) => {
+          const content = att.content;
+          if (Buffer.isBuffer(content)) {
+            return {
+              filename: att.filename,
+              content,
+              contentType: att.contentType,
+            };
+          }
+          if (typeof content === 'string') {
+            return {
+              filename: att.filename,
+              content,
+              encoding: 'base64' as const,
+              contentType: att.contentType,
+            };
+          }
+          return {
+            filename: att.filename,
+            content: '',
+            contentType: att.contentType,
+          };
+        }),
       });
 
       const message = await new Promise<Buffer>((resolve, reject) => {
@@ -104,5 +122,10 @@ export class SesEmailClient extends EmailClient<SesAccountConfig> {
         error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to send email via SES: ${errorMessage}`);
     }
+  }
+
+  close(): Promise<void> {
+    this.client.destroy();
+    return Promise.resolve();
   }
 }

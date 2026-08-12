@@ -12,6 +12,15 @@ export const ALLOWED_VERSIONS = new Set(['v3', 'v4']);
 export const ALLOWED_CHANNELS = new Set(['dnd', 'generic']);
 export const ALLOWED_MESSAGE_TYPES = new Set(['plain', 'unicode']);
 
+function isValidE164LikePhone(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  const digits = trimmed.startsWith('+') ? trimmed.slice(1) : trimmed;
+  return /^\d{7,15}$/.test(digits);
+}
+
 interface TermiiSendResponse {
   code?: string;
   message_id?: string | number;
@@ -79,6 +88,18 @@ export class TermiiSmsClient extends SmsClient {
     if (Array.isArray(to) && to.length > 100) {
       throw new SmsRequestError(
         'Termii accepts at most 100 recipients per send',
+        400,
+      );
+    }
+
+    const recipients = Array.isArray(to) ? to : [to];
+    const invalidRecipients = recipients.filter(
+      (recipient) =>
+        typeof recipient !== 'string' || !isValidE164LikePhone(recipient),
+    );
+    if (invalidRecipients.length > 0) {
+      throw new SmsRequestError(
+        `Invalid phone number(s): ${invalidRecipients.join(', ')}`,
         400,
       );
     }

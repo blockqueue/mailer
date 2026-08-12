@@ -26,6 +26,7 @@ interface SendMailOptions {
   from?: string;
   to?: string | string[];
   subject?: string;
+  fromName?: string;
   cc?: string | string[];
   bcc?: string | string[];
   replyTo?: string;
@@ -35,17 +36,29 @@ interface SendMailOptions {
   [key: string]: unknown;
 }
 
-function isValidValue(value: unknown): boolean {
+function isValidMailFieldValue(key: string, value: unknown): boolean {
   if (value === undefined || value === null) {
     return false;
   }
-  if (typeof value === 'string') {
-    return value.trim().length > 0;
+
+  if (key === 'attachments') {
+    return Array.isArray(value) && value.length > 0;
   }
-  if (Array.isArray(value)) {
-    return value.length > 0;
+
+  if (key === 'to' || key === 'cc' || key === 'bcc') {
+    if (typeof value === 'string') {
+      return value.trim().length > 0;
+    }
+    if (Array.isArray(value)) {
+      return (
+        value.length > 0 &&
+        value.every((item) => typeof item === 'string' && item.trim().length > 0)
+      );
+    }
+    return false;
   }
-  return true;
+
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
 function mergeSendMailOptions(
@@ -59,7 +72,7 @@ function mergeSendMailOptions(
     if (!SEND_MAIL_OPTION_KEYS.has(key)) {
       continue;
     }
-    if (isValidValue(value)) {
+    if (isValidMailFieldValue(key, value)) {
       merged[key] = value;
     }
   }
@@ -68,7 +81,7 @@ function mergeSendMailOptions(
     if (!SEND_MAIL_OPTION_KEYS.has(key)) {
       continue;
     }
-    if (isValidValue(value)) {
+    if (isValidMailFieldValue(key, value)) {
       merged[key] = value;
     }
   }
@@ -78,7 +91,7 @@ function mergeSendMailOptions(
       if (!SEND_MAIL_OPTION_KEYS.has(key)) {
         continue;
       }
-      if (isValidValue(value)) {
+      if (isValidMailFieldValue(key, value)) {
         merged[key] = value;
       }
     }
@@ -173,6 +186,7 @@ export async function sendEmail(
     to: sendMailOptions.to,
     subject: sendMailOptions.subject,
     html,
+    ...(sendMailOptions.fromName && { fromName: sendMailOptions.fromName }),
     ...(sendMailOptions.cc && { cc: sendMailOptions.cc }),
     ...(sendMailOptions.bcc && { bcc: sendMailOptions.bcc }),
     ...(sendMailOptions.replyTo && { replyTo: sendMailOptions.replyTo }),

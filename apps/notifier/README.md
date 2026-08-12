@@ -10,6 +10,6 @@ This directory contains the notifier service application. For complete documenta
 - **Compile templates**: `npm run compile-templates -- <inputDir> <outputDir>`
 - **Start (production bundle)**: `npm start`
 - **Lint**: `npm run lint`
-- **Routes**: `POST /email/send`, `POST /sms/send`, `GET /health`
+- **Routes**: `POST /email/send`, `POST /sms/send`, `GET /health`, `GET /ready`
 
 For shipping your own templates on top of the published image, see [examples/notifier-service](../../examples/notifier-service).

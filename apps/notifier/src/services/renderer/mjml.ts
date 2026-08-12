@@ -22,6 +22,14 @@ function escapeHtml(value: string): string {
   });
 }
 
+function sanitizeSubstitutedValue(value: string): string {
+  if (/^\s*(javascript|data|vbscript):/i.test(value)) {
+    logger.warn({ value }, 'Blocked unsafe URL scheme in template substitution');
+    return '';
+  }
+  return escapeHtml(value);
+}
+
 interface MjmlError {
   line: number;
   message: string;
@@ -76,7 +84,7 @@ export class MjmlRenderer implements Renderer {
           typeof value === 'number' ||
           typeof value === 'boolean'
         ) {
-          return escapeHtml(String(value));
+          return sanitizeSubstitutedValue(String(value));
         }
         logger.warn(
           { variable: varName, type: typeof value },

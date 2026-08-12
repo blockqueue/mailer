@@ -615,7 +615,7 @@ Send an SMS via a configured SMS account (Termii). No templates.
 
 **Request Fields:**
 
-- `to` (required): Destination phone number(s) in international format (string or array, max 100)
+- `to` (required): Destination phone number(s) in international format (string or array, max 100; 7–15 digits, optional leading `+`)
 - `body` (required): Message text
 - `account` (optional): SMS account id; falls back to `sms.defaults.account`
 - `sendOptions` (optional):
@@ -788,6 +788,7 @@ HMAC authentication provides:
 requestValidation:
   maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
   maxAttachmentSize: 10485760 # Per attachment (default: 10MB)
+  maxAttachments: 10 # Max attachments per email (default: 10)
   allowedAttachmentMimeTypes:
     - application/pdf
     - image/png
@@ -813,10 +814,8 @@ All requests are logged with:
 Special logging for:
 
 - Failed authentication attempts
-- Large requests (>100KB)
-- Slow requests:
-  - `/email/send` and `/sms/send`: >10 seconds (sending via external providers typically takes 1-5 seconds)
-  - Other endpoints: >1 second
+- Large requests (>512KB, based on Content-Length)
+- Slow requests (>5 seconds)
 
 **PII Handling:** Email addresses and payload content are not logged - only metadata (template ID, account ID, etc.) is recorded.
 
@@ -828,44 +827,22 @@ Special logging for:
 apps/notifier/
   src/
     controllers/          # Route handlers
-      email.controller.ts
-    index.ts              # Main app entry point (route definitions)
-    middleware/           # Middleware
-      auth.ts
-    services/             # Business logic services
-      email/              # Email sending service
-        send.ts
-        ses-client.ts
-        zeptomail-client.ts
-      sms/                # SMS sending service (Termii)
-        termii-client.ts
-        send.ts
-      renderer/           # Template renderers
-        html.ts
-        index.ts
-        mjml.ts
-        react-email.ts
-    types/                # TypeScript type definitions
-      config.ts
-      request.ts
-      template.ts
-    utils/                # Utility functions
-      loaders/            # Configuration and template loaders
-        config.loader.ts
-        template.loader.ts
-        yaml.loader.ts
-      schema/             # Schema utilities
-        json-schema-to-zod.ts
-      template/            # Template utilities
-        template-path.ts
-      validation/          # Validation utilities
-        email.ts
-        payload.ts
-  data/
-    config/
-      config.yaml
-    templates/
-      welcome-*/          # Template directories
+    index.ts              # Main app entry point
+    middleware/           # auth, audit, request validation
+    services/
+      email/              # SES + ZeptoMail
+      sms/                # Termii
+      renderer/           # html, mjml, react-email
+    types/
+    utils/
+      loaders/
+      schema/
+      validation/
+
+examples/notifier-service/  # Canonical consumer image (config + templates)
+  templates/
+  config/
+  Dockerfile
 ```
 
 ### Adding a New Renderer

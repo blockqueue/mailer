@@ -64,7 +64,10 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
 
       const parsedFrom = parseEmailAddress(fromAddress);
       const fromName =
-        this.config.fromName?.trim() ?? parsedFrom.name ?? parsedFrom.address;
+        options.fromName?.trim() ??
+        this.config.fromName?.trim() ??
+        parsedFrom.name ??
+        parsedFrom.address;
 
       const ccAddresses = this.toArray(options.cc);
       const bccAddresses = this.toArray(options.bcc);

@@ -119,7 +119,7 @@ export class TemplateLoader {
           failureCount,
           failures: failures.map((f) => `${f.templateId}: ${f.error}`),
         },
-        'All templates failed to load. Server will start but email sending may fail.',
+        'All templates failed to load.',
       );
     } else if (failureCount > 0) {
       logger.warn(

@@ -3,6 +3,7 @@ import { EmailRequestError } from '../../services/email/errors';
 import type { RequestValidationConfig } from '../../types/config';
 
 const DEFAULT_MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+const DEFAULT_MAX_ATTACHMENTS = 10;
 
 const DEFAULT_ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -22,6 +23,10 @@ function attachmentByteSize(content: string | Buffer): number {
   return Buffer.from(content, 'base64').length;
 }
 
+function normalizeMimeType(contentType: string): string {
+  return contentType.split(';', 1)[0].trim().toLowerCase();
+}
+
 export function validateAttachments(
   attachments: unknown[] | undefined,
   config?: RequestValidationConfig,
@@ -30,9 +35,20 @@ export function validateAttachments(
     return;
   }
 
+  const maxAttachments = config?.maxAttachments ?? DEFAULT_MAX_ATTACHMENTS;
+  if (attachments.length > maxAttachments) {
+    throw new EmailRequestError(
+      `Too many attachments (max ${String(maxAttachments)})`,
+      400,
+    );
+  }
+
   const maxSize = config?.maxAttachmentSize ?? DEFAULT_MAX_ATTACHMENT_SIZE;
   const allowedMimeTypes =
     config?.allowedAttachmentMimeTypes ?? DEFAULT_ALLOWED_MIME_TYPES;
+  const allowed = new Set(
+    allowedMimeTypes.map((type) => normalizeMimeType(type)),
+  );
 
   for (let i = 0; i < attachments.length; i++) {
     const raw = attachments[i];
@@ -46,7 +62,15 @@ export function validateAttachments(
     const att = raw as Attachment;
     const label = att.filename ?? `index ${String(i)}`;
 
-    if (!att.contentType || !allowedMimeTypes.includes(att.contentType)) {
+    if (!att.contentType) {
+      throw new EmailRequestError(
+        `Attachment "${label}" has missing or disallowed content type`,
+        400,
+      );
+    }
+
+    const mime = normalizeMimeType(att.contentType);
+    if (!allowed.has(mime)) {
       throw new EmailRequestError(
         `Attachment "${label}" has missing or disallowed content type`,
         400,

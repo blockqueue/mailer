@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseEmailAddress } from '../parseEmailAddress';
 
 function isValidEmail(email: string): boolean {
   try {
@@ -30,7 +31,12 @@ export function validateEmailAddresses(
   const invalidEmails: string[] = [];
 
   for (const email of emailArray) {
-    if (typeof email !== 'string' || !isValidEmail(email)) {
+    if (typeof email !== 'string') {
+      invalidEmails.push(String(email));
+      continue;
+    }
+    const { address } = parseEmailAddress(email);
+    if (!isValidEmail(address)) {
       invalidEmails.push(email);
     }
   }

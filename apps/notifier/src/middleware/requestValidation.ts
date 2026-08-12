@@ -4,6 +4,51 @@ import type { AppEnv } from '../types/hono';
 
 const DEFAULT_MAX_BODY_SIZE = 1024 * 1024;
 
+class BodyTooLargeError extends Error {
+  constructor() {
+    super('Payload too large');
+    this.name = 'BodyTooLargeError';
+  }
+}
+
+async function readBodyWithByteLimit(
+  request: Request,
+  maxBytes: number,
+): Promise<string> {
+  const reader = request.body?.getReader();
+  if (!reader) {
+    return '';
+  }
+
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new BodyTooLargeError();
+      }
+      chunks.push(value);
+    }
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      throw error;
+    }
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  }
+
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk))).toString(
+    'utf8',
+  );
+}
+
 export function requestValidationMiddleware(config: GlobalConfig) {
   const maxBodySize =
     config.requestValidation?.maxBodySize ?? DEFAULT_MAX_BODY_SIZE;
@@ -28,11 +73,7 @@ export function requestValidationMiddleware(config: GlobalConfig) {
 
       try {
         const clonedRequest = c.req.raw.clone();
-        const rawBody = await clonedRequest.text();
-
-        if (rawBody.length > maxBodySize) {
-          return c.json({ success: false, message: 'Payload too large' }, 413);
-        }
+        const rawBody = await readBodyWithByteLimit(clonedRequest, maxBodySize);
 
         try {
           const parsedBody = JSON.parse(rawBody) as unknown;
@@ -57,7 +98,10 @@ export function requestValidationMiddleware(config: GlobalConfig) {
             400,
           );
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof BodyTooLargeError) {
+          return c.json({ success: false, message: 'Payload too large' }, 413);
+        }
         return c.json(
           { success: false, message: 'Failed to read request body' },
           400,
