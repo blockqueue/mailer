@@ -17,7 +17,7 @@ interface MjmlResponse {
 type Mjml2Html = (
   mjml: string,
   options?: { validationLevel?: 'strict' | 'soft' | 'skip' },
-) => MjmlResponse;
+) => Promise<MjmlResponse> | MjmlResponse;
 
 function resolveMjml2Html(module: unknown): Mjml2Html {
   if (typeof module === 'function') {
@@ -50,12 +50,11 @@ export class MjmlRenderer implements Renderer {
         throw error;
       }
       throw new Error(
-        'MJML runtime is not installed. Precompile MJML templates with compile-templates, ' +
-          'or install the mjml package for development rendering of index.mjml.',
+        'MJML runtime is not installed. Install the mjml package for rendering index.mjml.',
       );
     }
 
-    const { html, errors } = mjml2html(mjmlContent, {
+    const { html, errors } = await mjml2html(mjmlContent, {
       validationLevel: 'soft',
     });
 

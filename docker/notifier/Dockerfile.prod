@@ -1,13 +1,15 @@
 FROM node:24-alpine AS base
 
+# Turbo (and some native Node addons) need glibc compatibility on Alpine.
+# See https://turborepo.dev/docs/guides/tools/docker
+RUN apk update && apk add --no-cache libc6-compat
+
 
 FROM base AS prune
 
-RUN apk add --no-cache gcompat
-
 WORKDIR /app
 COPY . .
-RUN npm i --global turbo@2.7.0
+RUN npm i --global turbo@2.10.9
 RUN turbo prune notifier --docker
 
 

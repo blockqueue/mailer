@@ -3,12 +3,12 @@
  * Live browser preview for HTML and MJML templates (Handlebars → optional MJML).
  * React Email continues to use `npm run dev` (email dev).
  */
+import Handlebars from 'handlebars';
+import mjml2html from 'mjml';
 import * as fs from 'node:fs';
 import * as http from 'node:http';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import Handlebars from 'handlebars';
-import mjml2html from 'mjml';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -80,7 +80,7 @@ function discoverTemplates() {
   return found;
 }
 
-function renderTemplate(template, payloads) {
+async function renderTemplate(template, payloads) {
   const source = fs.readFileSync(template.sourcePath, 'utf-8');
   const payload = payloads[template.id] ?? {};
   const compiled = Handlebars.compile(source, { strict: true });
@@ -90,7 +90,9 @@ function renderTemplate(template, payloads) {
     return expanded;
   }
 
-  const { html, errors } = mjml2html(expanded, { validationLevel: 'soft' });
+  const { html, errors } = await mjml2html(expanded, {
+    validationLevel: 'soft',
+  });
   if (errors?.length) {
     const details = errors
       .map((err) => err.formattedMessage ?? err.message)
@@ -230,6 +232,10 @@ function notFound(res, message) {
 }
 
 const server = http.createServer((req, res) => {
+  void handleRequest(req, res);
+});
+
+async function handleRequest(req, res) {
   const url = new URL(req.url || '/', `http://${HOST}:${String(PORT)}`);
 
   if (url.pathname === '/api/revision') {
@@ -266,7 +272,7 @@ const server = http.createServer((req, res) => {
     }
     try {
       const payloads = loadPayloads();
-      const html = injectLiveReload(renderTemplate(template, payloads));
+      const html = injectLiveReload(await renderTemplate(template, payloads));
       send(res, 200, html, 'text/html; charset=utf-8');
     } catch (error) {
       const message =
@@ -282,12 +288,17 @@ const server = http.createServer((req, res) => {
   }
 
   notFound(res, 'Not found');
-});
+}
 
 refreshCatalog();
 watchTemplates();
 server.on('error', (error) => {
-  if (error && typeof error === 'object' && 'code' in error && error.code === 'EADDRINUSE') {
+  if (
+    error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    error.code === 'EADDRINUSE'
+  ) {
     console.error(
       `[preview] Port ${String(PORT)} is already in use. Stop the other process or set PREVIEW_PORT.`,
     );
@@ -297,6 +308,8 @@ server.on('error', (error) => {
 });
 server.listen(PORT, HOST, () => {
   console.log(`[preview] http://${HOST}:${String(PORT)}`);
-  console.log('[preview] React Email: npm run preview:react-email → http://127.0.0.1:10001');
+  console.log(
+    '[preview] React Email: npm run preview:react-email → http://127.0.0.1:10001',
+  );
   console.log('[preview] Both: npm run dev');
 });
