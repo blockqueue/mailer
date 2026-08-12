@@ -6,9 +6,9 @@ Canonical example of shipping your own templates on top of the BlockQueue notifi
 
 1. **Edit** source templates under `templates/` (`.tsx`, `.mjml`, or `.html`) — nested folders are fine; each `template.yaml` must have a unique `id`
 2. **Preview** React Email with `npm run dev` (`.tsx` only)
-3. **Build** a consumer image — Dockerfile compiles templates into `/app/templates` on the slim Distroless runtime
+3. **Build** a consumer image — Dockerfile packages templates into `/app/templates` (React Email → `index.mjs`; MJML/HTML copied for runtime Handlebars + MJML)
 
-Production always bakes compiled artifacts; volume mounts are not supported.
+Production always bakes templates into the image; volume mounts are not supported.
 
 ## Project structure
 

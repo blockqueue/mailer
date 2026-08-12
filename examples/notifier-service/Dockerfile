@@ -8,7 +8,6 @@ COPY --from=notifier /app/dist/compile-templates.mjs ./compile-templates.mjs
 RUN npm init -y \
   && npm install \
     esbuild@0.27.2 \
-    mjml@4.18.0 \
     @react-email/components@0.5.7 \
     react@19.2.3 \
     react-dom@19.2.3

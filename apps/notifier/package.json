@@ -4,8 +4,8 @@
   "scripts": {
     "dev": "NODE_ENV=development tsx watch src/index.ts",
     "build": "npm run build:server && npm run build:compile-templates",
-    "build:server": "NODE_ENV=production esbuild src/index.ts --bundle --platform=node --target=node24 --format=cjs --outfile=dist/index.cjs --minify --packages=bundle --external:react --external:react-dom --external:react/jsx-runtime --external:react/jsx-dev-runtime --external:@react-email/render --external:mjml",
-    "build:compile-templates": "NODE_ENV=production esbuild src/cli/compile-templates.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/compile-templates.mjs --minify --external:esbuild --external:mjml",
+    "build:server": "NODE_ENV=production esbuild src/index.ts --bundle --platform=node --target=node24 --format=cjs --outfile=dist/index.cjs --minify --packages=bundle --external:react --external:react-dom --external:react/jsx-runtime --external:react/jsx-dev-runtime --external:@react-email/render --external:mjml --external:handlebars",
+    "build:compile-templates": "NODE_ENV=production esbuild src/cli/compile-templates.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/compile-templates.mjs --minify --external:esbuild",
     "compile-templates": "tsx src/cli/compile-templates.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "lint": "eslint . --ext .ts,.tsx",
@@ -22,6 +22,7 @@
     "aws-sdk-v3-proxy": "^2.2.0",
     "axios": "^1.13.2",
     "dotenv": "^16.0.3",
+    "handlebars": "^4.7.9",
     "hono": "^4.11.2",
     "js-yaml": "^4.1.1",
     "mjml": "^4.18.0",
@@ -38,12 +39,12 @@
     "@types/nodemailer": "^7.0.4",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
+    "@vitest/coverage-v8": "^3.2.4",
     "esbuild": "^0.27.2",
     "eslint": "^9.39.1",
     "tsx": "^4.7.1",
     "typescript": "6.0.3",
-    "vitest": "^3.2.4",
-    "@vitest/coverage-v8": "^3.2.4"
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=24"

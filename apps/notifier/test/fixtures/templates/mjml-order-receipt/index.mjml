@@ -1,0 +1,14 @@
+<mjml>
+  <mj-body>
+    <mj-section>
+      <mj-column>
+        <mj-text>Order {{orderId}}</mj-text>
+        <mj-text>Hi {{customerName}}, thanks for your purchase.</mj-text>
+        {{#each lineItems}}
+        <mj-text>{{quantity}}× {{name}} — {{price}}</mj-text>
+        {{/each}}
+        <mj-text>Total: {{total}}</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

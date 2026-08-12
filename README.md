@@ -135,7 +135,7 @@ For a production-like Docker run with compiled templates, see [examples/notifier
 
 **Canonical guide:** [examples/notifier-service](examples/notifier-service) — bake your templates into a consumer image. Volume-mounting templates into Distroless is not supported.
 
-Authors keep editable source under `templates/` (`.tsx` / `.mjml` / `.html`) and preview with React Email. When ready to ship, the consumer Dockerfile compiles templates into the slim notifier image:
+Authors keep editable source under `templates/` (`.tsx` / `.mjml` / `.html`) and preview with React Email. When ready to ship, the consumer Dockerfile packages templates into the slim notifier image (React Email is compiled to `index.mjs`; MJML/HTML are copied for runtime Handlebars + MJML):
 
 ```dockerfile
 ARG NOTIFIER_IMAGE=ghcr.io/blockqueue/notifier:latest
@@ -144,7 +144,7 @@ FROM ${NOTIFIER_IMAGE} AS notifier
 FROM node:24-alpine AS compile
 WORKDIR /work
 COPY --from=notifier /app/dist/compile-templates.mjs ./compile-templates.mjs
-RUN npm init -y && npm install esbuild mjml @react-email/components react react-dom
+RUN npm init -y && npm install esbuild @react-email/components react react-dom
 COPY ./templates /templates-src
 RUN node ./compile-templates.mjs /templates-src /app/templates
 
@@ -153,23 +153,23 @@ COPY --from=compile /app/templates /app/templates
 COPY ./config/config.yaml /config/config.yaml
 ```
 
-Templates land under **`/app/templates`** so Node resolves `react` / `@react-email/render` from `/app/node_modules` without a symlink.
+Templates land under **`/app/templates`** so Node resolves `react` / `@react-email/render` / `handlebars` / `mjml` from `/app/node_modules` without a symlink.
 
-| Source                    | Compiled artifact                                      |
-| ------------------------- | ------------------------------------------------------ |
-| `index.tsx` (React Email) | `index.mjs` + `renderer: react-email` in template.yaml |
-| `index.mjml`              | `index.html` + `renderer: html`                        |
-| `index.html`              | copied as-is + `renderer: html`                        |
+| Source                    | Compiled artifact                                                   |
+| ------------------------- | ------------------------------------------------------------------- |
+| `index.tsx` (React Email) | `index.mjs` + `renderer: react-email` in template.yaml              |
+| `index.mjml`              | copied as-is + `renderer: mjml` (Handlebars + MJML at request time) |
+| `index.html`              | copied as-is + `renderer: html` (Handlebars at request time)        |
 
 ### Development vs production templates
 
-| Environment          | How you run                                                         | What loads                                                              |
-| -------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **Local API**        | `npm run dev` in `apps/notifier` (`NODE_ENV=development` + **tsx**) | Source `index.tsx` / `index.mjml` (set `TEMPLATES_DIR` / `CONFIG_PATH`) |
-| **Template preview** | `npm run dev` in your consumer (`email dev`)                        | React Email preview only — not the notifier API                         |
-| **Production image** | Distroless final stage                                              | **Compiled** `index.mjs` / `index.html` only                            |
+| Environment          | How you run                                                         | What loads                                                                             |
+| -------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Local API**        | `npm run dev` in `apps/notifier` (`NODE_ENV=development` + **tsx**) | Source `index.tsx` / `index.mjml` / `index.html` (set `TEMPLATES_DIR` / `CONFIG_PATH`) |
+| **Template preview** | `npm run dev` in your consumer (`email dev`)                        | React Email preview only — not the notifier API                                        |
+| **Production image** | Distroless final stage                                              | `index.mjs` (React Email) plus source `index.mjml` / `index.html`                      |
 
-The Distroless runtime does **not** include `tsx`, `mjml`, or `@react-email/components`. Do not set `NODE_ENV=development` on the baked image expecting raw `.tsx` to work — compile at image build time instead. Distroless is for the **final** image only; compilation uses a normal Node stage.
+The Distroless runtime includes `react` / `@react-email/render`, plus `handlebars` and `mjml` for HTML/MJML templates. It does **not** include `tsx` or `@react-email/components`. Do not set `NODE_ENV=development` on the baked image expecting raw `.tsx` to work — React Email still compiles to `index.mjs` at image build time. Distroless is for the **final** image only; React Email compilation uses a normal Node stage.
 
 ## Configuration
 
@@ -321,7 +321,7 @@ The loader recursively finds every `template.yaml` under the templates directory
 Each template directory (the folder containing `template.yaml`) has:
 
 1. `template.yaml` - Template metadata and schema
-2. Template file — source: `index.tsx` / `index.mjml` / `index.html`; production: `index.mjs` and/or `index.html`
+2. Template file — source: `index.tsx` / `index.mjml` / `index.html`; production: `index.mjs` (React Email) and/or source `index.mjml` / `index.html`
 
 ### Template Config (`template.yaml`)
 
@@ -415,7 +415,21 @@ See [examples/notifier-service](examples/notifier-service) for the full author �
 </mjml>
 ```
 
-Variables in MJML templates use `{{variableName}}` syntax.
+Variables in MJML and HTML templates use [Handlebars](https://handlebarsjs.com/). At send time the notifier runs Handlebars, then (for MJML) `mjml2html`.
+
+```xml
+{{#each items}}
+  <mj-text>{{this.name}}</mj-text>
+{{/each}}
+{{#if isPremium}}
+  <mj-text>Thanks for upgrading.</mj-text>
+{{/if}}
+```
+
+- `{{value}}` is HTML-escaped; use `{{{value}}}` only for trusted HTML.
+- Missing variables return `400`.
+- Arrays/objects are supported for helpers like `{{#each}}` / `{{#if}}`.
+- Unsafe URL schemes (`javascript:`, `data:`, `vbscript:`) in string values are blanked.
 
 ### HTML Template (`index.html`)
 
@@ -425,13 +439,16 @@ Variables in MJML templates use `{{variableName}}` syntax.
   <body>
     <h1>Hello {{userName}}!</h1>
     <p>Welcome to {{appName}}!</p>
+    <ul>
+      {{#each items}}
+      <li>{{this}}</li>
+      {{/each}}
+    </ul>
   </body>
 </html>
 ```
 
-Variables in HTML templates use `{{variableName}}` syntax. Every variable referenced in the template must be present in the request `payload` with a string, number, or boolean value. Missing or unsupported variables return `400`.
-
-Template JSON Schemas reject unknown payload properties by default (unless `additionalProperties: true` is set explicitly).
+Same Handlebars rules as MJML (see above). Template JSON Schemas reject unknown payload properties by default (unless `additionalProperties: true` is set explicitly).
 
 ## API Reference
 
@@ -916,7 +933,7 @@ npm run lint
 docker build -t blockqueue/notifier:latest -f docker/notifier/Dockerfile.prod .
 ```
 
-The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.mjs`, and only the peers pinned in [`docker/notifier/package.runtime.json`](docker/notifier/package.runtime.json) (`react` / `react-dom` / `@react-email/render`). Runtime deps are installed on Debian (glibc) before copying into Distroless. It does **not** include `tsx`, `mjml`, or `@react-email/components`.
+The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.mjs`, and the peers pinned in [`docker/notifier/package.runtime.json`](docker/notifier/package.runtime.json) (`react` / `react-dom` / `@react-email/render` / `handlebars` / `mjml`). Runtime deps are installed on Debian (glibc) before copying into Distroless. It does **not** include `tsx` or `@react-email/components`.
 
 (Chainguard’s public `node` image was evaluated; Distroless was smaller.)
 

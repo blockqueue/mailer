@@ -23,6 +23,44 @@ describe('renderers', () => {
     expect(html).toContain('<html');
   });
 
+  it('renders an HTML order receipt with line items', async () => {
+    const html = await new HtmlRenderer().render(
+      path.join(templatesFixtureDir, 'html-order-receipt', 'index.html'),
+      {
+        orderId: 'ORD-1001',
+        customerName: 'Ada',
+        lineItems: [
+          { name: 'USB-C Hub', quantity: 1, price: '$49.00' },
+          { name: 'Cable', quantity: 2, price: '$12.00' },
+        ],
+        total: '$73.00',
+      },
+    );
+    expect(html).toContain('Order ORD-1001 for Ada');
+    expect(html).toContain('1× USB-C Hub — $49.00');
+    expect(html).toContain('2× Cable — $12.00');
+    expect(html).toContain('Total: $73.00');
+  });
+
+  it('renders an MJML order receipt with line items', async () => {
+    const html = await new MjmlRenderer().render(
+      path.join(templatesFixtureDir, 'mjml-order-receipt', 'index.mjml'),
+      {
+        orderId: 'ORD-1001',
+        customerName: 'Ada',
+        lineItems: [
+          { name: 'USB-C Hub', quantity: 1, price: '$49.00' },
+          { name: 'Cable', quantity: 2, price: '$12.00' },
+        ],
+        total: '$73.00',
+      },
+    );
+    expect(html).toContain('Order ORD-1001');
+    expect(html).toContain('USB-C Hub');
+    expect(html).toContain('Cable');
+    expect(html).toContain('Total: $73.00');
+  });
+
   it('still returns HTML when MJML reports soft errors', async () => {
     const html = await new MjmlRenderer().render(
       path.join(fixturesDir, 'mjml-invalid.mjml'),

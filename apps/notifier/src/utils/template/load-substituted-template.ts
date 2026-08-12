@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { substituteTemplateVars } from './substitute-vars';
+import { renderHandlebarsTemplate } from './render-handlebars';
 import { resolveTemplatePath } from './template-path';
 
 export function loadSubstitutedTemplate(
@@ -8,5 +8,5 @@ export function loadSubstitutedTemplate(
 ): string {
   const absolutePath = resolveTemplatePath(templatePath);
   const content = fs.readFileSync(absolutePath, 'utf-8');
-  return substituteTemplateVars(content, payload);
+  return renderHandlebarsTemplate(content, payload);
 }

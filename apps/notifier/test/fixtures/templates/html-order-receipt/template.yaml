@@ -1,0 +1,24 @@
+id: html-order-receipt
+renderer: html
+schema:
+  type: object
+  required: [orderId, customerName, lineItems, total]
+  properties:
+    orderId:
+      type: string
+    customerName:
+      type: string
+    lineItems:
+      type: array
+      items:
+        type: object
+        required: [name, quantity, price]
+        properties:
+          name:
+            type: string
+          quantity:
+            type: number
+          price:
+            type: string
+    total:
+      type: string

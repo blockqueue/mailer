@@ -1,5 +1,4 @@
 import yaml from 'js-yaml';
-import mjml2html from 'mjml';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { compileReactEmailEntry } from '../services/renderer/compile-react-email';
@@ -83,25 +82,6 @@ function resolveRenderer(
   return 'html';
 }
 
-function compileMjml(entryPath: string, outfile: string): void {
-  const mjmlContent = fs.readFileSync(entryPath, 'utf-8');
-  const { html, errors } = mjml2html(mjmlContent, {
-    validationLevel: 'soft',
-  });
-
-  if (errors.length > 0) {
-    const details = errors
-      .map((err) => err.formattedMessage ?? err.message)
-      .join('\n');
-    throw new CompileError(
-      `MJML compilation failed for ${entryPath}:\n${details}`,
-    );
-  }
-
-  ensureDir(path.dirname(outfile));
-  fs.writeFileSync(outfile, html, 'utf-8');
-}
-
 async function compileTemplateYaml(
   yamlPath: string,
   inputRoot: string,
@@ -135,8 +115,8 @@ async function compileTemplateYaml(
     if (!fs.existsSync(entry)) {
       throw new CompileError(`Template file not found: ${entry}`);
     }
-    compileMjml(entry, path.join(outDir, 'index.html'));
-    outConfig.renderer = 'html';
+    copyFile(entry, path.join(outDir, 'index.mjml'));
+    outConfig.renderer = 'mjml';
   } else {
     const entry = path.join(templateDir, 'index.html');
     if (!fs.existsSync(entry)) {
