@@ -1,10 +1,10 @@
 import type { AxiosInstance } from 'axios';
 import axios from 'axios';
 import type { ZeptomailAccountConfig } from '../../types/config';
+import { parseEmailAddress } from '../../utils/parseEmailAddress';
 import type { EmailOptions, SendResult } from './base-client';
 import { EmailClient } from './base-client';
 import { EmailRequestError } from './errors';
-import { parseEmailAddress } from '../../utils/parseEmailAddress';
 
 interface ZeptomailSendResponse {
   data?: {
@@ -64,9 +64,7 @@ export class ZeptomailEmailClient extends EmailClient<ZeptomailAccountConfig> {
 
       const parsedFrom = parseEmailAddress(fromAddress);
       const fromName =
-        this.config.fromName?.trim() ??
-        parsedFrom.name ??
-        parsedFrom.address;
+        this.config.fromName?.trim() ?? parsedFrom.name ?? parsedFrom.address;
 
       const ccAddresses = this.toArray(options.cc);
       const bccAddresses = this.toArray(options.bcc);

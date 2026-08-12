@@ -274,7 +274,7 @@ email:
     zeptomail:
       type: zeptomail
       from: noreply@example.com
-      fromName: MyApp                 # Optional display name
+      fromName: MyApp # Optional display name
       apiKey: ${ZEPTOMAIL_API_KEY}
       bounceAddress: ${ZEPTOMAIL_BOUNCE_ADDRESS} # Optional
 ```

@@ -42,7 +42,10 @@ export function requestValidationMiddleware(config: GlobalConfig) {
             Array.isArray(parsedBody)
           ) {
             return c.json(
-              { success: false, message: 'Request JSON body must be an object' },
+              {
+                success: false,
+                message: 'Request JSON body must be an object',
+              },
               400,
             );
           }

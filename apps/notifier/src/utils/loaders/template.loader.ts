@@ -166,9 +166,7 @@ export class TemplateLoader {
 
     const schema = config.schema as Record<string, unknown>;
     if (schema.type !== 'object') {
-      throw new Error(
-        `Template "${config.id}" schema must have type: object`,
-      );
+      throw new Error(`Template "${config.id}" schema must have type: object`);
     }
 
     const templatePath = this.resolveTemplateFile(templateDir, rendererType);

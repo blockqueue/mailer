@@ -1,4 +1,7 @@
-import type { EmailAccountConfig, RequestValidationConfig } from '../../types/config';
+import type {
+  EmailAccountConfig,
+  RequestValidationConfig,
+} from '../../types/config';
 import type { SendEmailRequest } from '../../types/request';
 import type { TemplateConfig } from '../../types/template';
 import { logger } from '../../utils/logger';
@@ -109,10 +112,7 @@ function validateSendMailOptions(options: SendMailOptions): void {
       },
       {
         field: 'bounceAddress',
-        invalid: validateEmailAddresses(
-          options.bounceAddress,
-          'bounceAddress',
-        ),
+        invalid: validateEmailAddresses(options.bounceAddress, 'bounceAddress'),
       },
     ];
 

@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import { createEmailClient } from '../services/email/createEmailClient';
+import { EmailRequestError } from '../services/email/errors';
 import { sendEmail } from '../services/email/send';
 import { getRenderer } from '../services/renderer';
 import type { GlobalConfig } from '../types/config';
@@ -7,7 +8,6 @@ import type { SendEmailRequest, SendResponse } from '../types/request';
 import type { TemplateLoader } from '../utils/loaders/template.loader';
 import { logger } from '../utils/logger';
 import { validatePayload } from '../utils/validation/payload';
-import { EmailRequestError } from '../services/email/errors';
 
 export async function sendEmailController(
   c: Context,
@@ -120,15 +120,9 @@ export async function sendEmailController(
     if (error instanceof EmailRequestError) {
       if (error.status === 502) {
         logger.error({ error: error.message }, 'Email provider error');
-        return c.json(
-          { success: false, message: 'Email provider error' },
-          502,
-        );
+        return c.json({ success: false, message: 'Email provider error' }, 502);
       }
-      return c.json(
-        { success: false, message: error.message },
-        error.status,
-      );
+      return c.json({ success: false, message: error.message }, error.status);
     }
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';

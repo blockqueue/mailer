@@ -7,4 +7,3 @@ export class EmailRequestError extends Error {
     this.status = status;
   }
 }
-

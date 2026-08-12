@@ -136,10 +136,7 @@ export async function sendSmsController(
     if (error instanceof SmsRequestError) {
       if (error.status === 502) {
         logger.error({ error: error.message }, 'SMS provider error');
-        return c.json(
-          { success: false, message: 'SMS provider error' },
-          502,
-        );
+        return c.json({ success: false, message: 'SMS provider error' }, 502);
       }
       return c.json({ success: false, message: error.message }, error.status);
     }

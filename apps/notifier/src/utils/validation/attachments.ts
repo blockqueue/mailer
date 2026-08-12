@@ -1,6 +1,6 @@
-import type { RequestValidationConfig } from '../../types/config';
 import type { Attachment } from '../../services/email/base-client';
 import { EmailRequestError } from '../../services/email/errors';
+import type { RequestValidationConfig } from '../../types/config';
 
 const DEFAULT_MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 
@@ -37,7 +37,10 @@ export function validateAttachments(
   for (let i = 0; i < attachments.length; i++) {
     const raw = attachments[i];
     if (!raw || typeof raw !== 'object') {
-      throw new EmailRequestError(`Invalid attachment at index ${String(i)}`, 400);
+      throw new EmailRequestError(
+        `Invalid attachment at index ${String(i)}`,
+        400,
+      );
     }
 
     const att = raw as Attachment;
