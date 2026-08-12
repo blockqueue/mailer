@@ -1,0 +1,10 @@
+{
+  "name": "notifier-runtime",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "@react-email/render": "1.4.0"
+  }
+}

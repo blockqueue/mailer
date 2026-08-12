@@ -1,0 +1,12 @@
+id: html-welcome
+renderer: html
+account: zeptomail
+from: template@example.com
+subject: Welcome
+schema:
+  type: object
+  required:
+    - userName
+  properties:
+    userName:
+      type: string

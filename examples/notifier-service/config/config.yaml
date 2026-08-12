@@ -1,0 +1,36 @@
+auth:
+  type: hmac
+  header: x-notifier-signature
+  secret: ${NOTIFIER_SIGNING_SECRET}
+  tolerance: 300
+
+email:
+  accounts:
+    zeptomail:
+      type: zeptomail
+      from: ${MAIL_FROM_EMAIL}
+      apiKey: ${ZEPTOMAIL_API_KEY}
+
+    ses:
+      type: ses
+      from: ${MAIL_FROM_EMAIL}
+      region: ${AWS_REGION}
+      accessKeyId: ${AWS_ACCESS_KEY_ID}
+      secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
+
+  defaults:
+    account: zeptomail
+    renderer: react-email
+
+sms:
+  accounts:
+    termii:
+      type: termii
+      apiKey: ${TERMII_API_KEY}
+      from: ${TERMII_FROM}
+      version: v3
+      channel: dnd
+      messageType: plain
+
+  defaults:
+    account: termii

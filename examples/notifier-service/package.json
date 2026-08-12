@@ -1,0 +1,21 @@
+{
+  "name": "example-notifier-service",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "NODE_ENV=development email dev -p 10001 --dir=templates",
+    "export": "email export"
+  },
+  "dependencies": {
+    "@react-email/components": "^0.5.7",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@react-email/preview-server": "^4.3.2",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "react-email": "^4.3.2"
+  }
+}

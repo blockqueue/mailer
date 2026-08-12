@@ -1,0 +1,19 @@
+id: mjml-login-otp
+renderer: mjml
+schema:
+  type: object
+  additionalProperties: false
+  required:
+    - userName
+    - appName
+    - otpCode
+    - expiresInMinutes
+  properties:
+    userName:
+      type: string
+    appName:
+      type: string
+    otpCode:
+      type: string
+    expiresInMinutes:
+      type: number

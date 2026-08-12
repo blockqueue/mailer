@@ -1,0 +1,55 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{appName}} login code</mj-title>
+    <mj-preview>Your login code expires in {{expiresInMinutes}} minutes.</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" />
+      <mj-text color="#18181b" font-size="16px" line-height="1.6" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f4f4f5">
+    <mj-section background-color="#18181b" padding="24px 32px">
+      <mj-column>
+        <mj-text color="#ffffff" font-size="18px" font-weight="600" padding="0">
+          {{appName}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="32px">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="600" padding="0 0 12px">
+          Your login code
+        </mj-text>
+        <mj-text color="#3f3f46" padding="0 0 20px">
+          Hi {{userName}}, use this one-time code to finish signing in to
+          {{appName}}:
+        </mj-text>
+        <mj-text
+          align="center"
+          font-size="32px"
+          font-weight="700"
+          letter-spacing="6px"
+          padding="20px 16px"
+          container-background-color="#f4f4f5"
+        >
+          {{otpCode}}
+        </mj-text>
+        <mj-text color="#71717a" font-size="14px" padding="20px 0 0">
+          This code expires in {{expiresInMinutes}} minutes. If you did not
+          request it, you can safely ignore this email.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0 32px 28px">
+      <mj-column>
+        <mj-divider border-color="#e4e4e7" border-width="1px" padding="0 0 16px" />
+        <mj-text color="#a1a1aa" font-size="12px" padding="0">
+          Never share this code with anyone. {{appName}} will never ask you for
+          it over phone or chat.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

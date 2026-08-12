@@ -1,0 +1,9 @@
+id: mjml-otp
+renderer: mjml
+schema:
+  type: object
+  required:
+    - code
+  properties:
+    code:
+      type: string

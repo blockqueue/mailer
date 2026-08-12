@@ -1,0 +1,16 @@
+id: html-user-welcome
+renderer: html
+schema:
+  type: object
+  additionalProperties: false
+  required:
+    - userName
+    - appName
+    - supportEmail
+  properties:
+    userName:
+      type: string
+    appName:
+      type: string
+    supportEmail:
+      type: string

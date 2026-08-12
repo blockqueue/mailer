@@ -1,0 +1,15 @@
+id: react-email-user-welcome
+renderer: react-email
+schema:
+  type: object
+  additionalProperties: false
+  required:
+    - userName
+    - appName
+  properties:
+    userName:
+      type: string
+    appName:
+      type: string
+    ctaUrl:
+      type: string

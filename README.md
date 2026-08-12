@@ -1,18 +1,18 @@
-# BlockQueue Mailer
+# BlockQueue Notifier
 
-A self-hostable email orchestration API that receives HTTP requests, renders emails using pluggable renderers, and sends via configurable transports.
+A self-hostable notification API for email and SMS. Email requests render templates and send via Zeptomail or SES; SMS sends via Termii (no templates).
 
 > **Internal use only.** This service is designed to run on a private network (VPC, Docker Swarm overlay, Kubernetes cluster network, etc.). Do **not** expose it directly on the public internet. Put it behind your internal mesh, reverse proxy, or service discovery, and restrict callers to trusted backends.
 
 ## About This Project
 
-This mailer service was developed by [BlockQueue](https://blockqueue.io) as infrastructure to support our other projects that need email delivery capabilities, without building email functionality directly into each project. We've open sourced it for the community to use and benefit from.
+This notifier service was developed by [BlockQueue](https://blockqueue.io) as infrastructure to support our other projects that need email and SMS delivery, without building that functionality into each project. We've open sourced it for the community to use and benefit from.
 
 **Why we built it:**
 
-- Centralized email infrastructure for multiple BlockQueue products
-- Consistent email delivery across our ecosystem
-- Separation of concerns - email logic separate from application logic
+- Centralized notification infrastructure for multiple BlockQueue products
+- Consistent email and SMS delivery across our ecosystem
+- Separation of concerns - notification logic separate from application logic
 - Reusable across different projects with different requirements
 
 **Why we open sourced it:**
@@ -20,19 +20,19 @@ This mailer service was developed by [BlockQueue](https://blockqueue.io) as infr
 - Share quality infrastructure with the developer community
 - Build trust and showcase BlockQueue's engineering capabilities
 - Enable community contributions and improvements
-- Help others who need self-hosted email solutions
+- Help others who need self-hosted notification solutions
 
 This is infrastructure software, not a standalone product. We focus on making it reliable, well-documented, and easy to use for both our internal needs and the open source community.
 
 ## Features
 
 - **Multiple Renderers**: Support for React Email, MJML, and HTML templates
-- **Flexible Transports**: Support for Zeptomail, AWS SES, and related providers
+- **Email + SMS**: Zeptomail / AWS SES for email; Termii (API v3/v4) for SMS
 - **YAML Configuration**: Configuration files with environment variable substitution
 - **Template Validation**: Templates are validated at startup with JSON Schema
 - **Email Validation**: Automatic validation of all email addresses (from, to, cc, bcc, replyTo)
 - **Authentication**: API key or HMAC request signing
-- **Docker Ready**: Slim runtime image; compile templates in your consumer Dockerfile (see [examples/mail-service](examples/mail-service))
+- **Docker Ready**: Slim runtime image; compile templates in your consumer Dockerfile (see [examples/notifier-service](examples/notifier-service))
 
 ## Table of Contents
 
@@ -49,23 +49,44 @@ This is infrastructure software, not a standalone product. We focus on making it
 
 ### Using Docker Compose
 
+The repo includes a working example under [examples/notifier-service](examples/notifier-service). From the repo root:
+
+```bash
+docker compose build
+docker compose up bq-example-notifier-service
+```
+
+Replace the demo secrets in `docker-compose.yml` before deploying anywhere outside local development.
+
+That builds the slim notifier runtime plus a consumer image with compiled templates and example config. For a minimal hand-rolled setup:
+
 1. Create a `config` directory with `config.yaml`:
 
 ```yaml
 auth:
   type: apiKey
-  header: x-mailer-api-key
-  value: ${MAILER_API_KEY}
+  header: x-notifier-api-key
+  value: ${NOTIFIER_API_KEY}
 
-accounts:
-  zeptomail:
-    type: zeptomail
-    from: ${MAIL_FROM_EMAIL}
-    apiKey: ${ZEPTOMAIL_API_KEY}
+email:
+  accounts:
+    zeptomail:
+      type: zeptomail
+      from: ${MAIL_FROM_EMAIL}
+      apiKey: ${ZEPTOMAIL_API_KEY}
+  defaults:
+    account: zeptomail
+    renderer: react-email
 
-defaults:
-  account: zeptomail
-  renderer: react-email
+sms:
+  accounts:
+    termii:
+      type: termii
+      apiKey: ${TERMII_API_KEY}
+      from: ${TERMII_FROM}
+      version: v3
+  defaults:
+    account: termii
 ```
 
 2. Create a `templates` directory with your templates (see [Templates](#templates) section)
@@ -73,9 +94,11 @@ defaults:
 3. Set environment variables (note: variable names should match what you use in your `config.yaml`):
 
 ```bash
-export MAILER_API_KEY=your-api-key
+export NOTIFIER_API_KEY=your-api-key
 export MAIL_FROM_EMAIL=noreply@example.com
 export ZEPTOMAIL_API_KEY=your-zeptomail-key
+export TERMII_API_KEY=your-termii-key
+export TERMII_FROM=MyApp
 ```
 
 **Note**: All environment variables are optional. You only need to set the variables that you reference in your `config.yaml` file. Variable names are user-defined - use whatever names you prefer in your config.
@@ -94,38 +117,38 @@ docker-compose up
 npm install
 ```
 
-2. Copy `apps/mailer/.env.example` to `apps/mailer/.env` (points at [examples/mail-service](examples/mail-service) config and emails by default)
+2. Copy `apps/notifier/.env.example` to `apps/notifier/.env` (points at [examples/notifier-service](examples/notifier-service) config and templates by default)
 
 3. Set any provider secrets you reference in that config
 
 4. Run the server:
 
 ```bash
-npm run dev --workspace=mailer
+npm run dev --workspace=notifier
 ```
 
 The server will start on port 3000 (or the port specified by `PORT` environment variable).
 
-For a production-like Docker run with compiled templates, see [examples/mail-service](examples/mail-service).
+For a production-like Docker run with compiled templates, see [examples/notifier-service](examples/notifier-service).
 
 ## Shipping your own templates
 
-**Canonical guide:** [examples/mail-service](examples/mail-service) — bake your templates into a consumer image. Volume-mounting templates into Distroless is not supported.
+**Canonical guide:** [examples/notifier-service](examples/notifier-service) — bake your templates into a consumer image. Volume-mounting templates into Distroless is not supported.
 
-Authors keep editable source under `emails/` (`.tsx` / `.mjml` / `.html`) and preview with React Email. When ready to ship, the consumer Dockerfile compiles templates into the slim mailer image:
+Authors keep editable source under `templates/` (`.tsx` / `.mjml` / `.html`) and preview with React Email. When ready to ship, the consumer Dockerfile compiles templates into the slim notifier image:
 
 ```dockerfile
-ARG MAILER_IMAGE=ghcr.io/blockqueue/mailer:latest
-FROM ${MAILER_IMAGE} AS mailer
+ARG NOTIFIER_IMAGE=ghcr.io/blockqueue/notifier:latest
+FROM ${NOTIFIER_IMAGE} AS notifier
 
 FROM node:24-alpine AS compile
 WORKDIR /work
-COPY --from=mailer /app/dist/compile-templates.mjs ./compile-templates.mjs
+COPY --from=notifier /app/dist/compile-templates.mjs ./compile-templates.mjs
 RUN npm init -y && npm install esbuild mjml @react-email/components react react-dom
-COPY ./emails /templates-src
+COPY ./templates /templates-src
 RUN node ./compile-templates.mjs /templates-src /app/templates
 
-FROM ${MAILER_IMAGE}
+FROM ${NOTIFIER_IMAGE}
 COPY --from=compile /app/templates /app/templates
 COPY ./config/config.yaml /config/config.yaml
 ```
@@ -140,11 +163,11 @@ Templates land under **`/app/templates`** so Node resolves `react` / `@react-ema
 
 ### Development vs production templates
 
-| Environment          | How you run                                                       | What loads                                                              |
-| -------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **Local API**        | `npm run dev` in `apps/mailer` (`NODE_ENV=development` + **tsx**) | Source `index.tsx` / `index.mjml` (set `TEMPLATES_DIR` / `CONFIG_PATH`) |
-| **Template preview** | `npm run dev` in your consumer (`email dev`)                      | React Email preview only — not the mailer API                           |
-| **Production image** | Distroless final stage                                            | **Compiled** `index.mjs` / `index.html` only                            |
+| Environment          | How you run                                                         | What loads                                                              |
+| -------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Local API**        | `npm run dev` in `apps/notifier` (`NODE_ENV=development` + **tsx**) | Source `index.tsx` / `index.mjml` (set `TEMPLATES_DIR` / `CONFIG_PATH`) |
+| **Template preview** | `npm run dev` in your consumer (`email dev`)                        | React Email preview only — not the notifier API                         |
+| **Production image** | Distroless final stage                                              | **Compiled** `index.mjs` / `index.html` only                            |
 
 The Distroless runtime does **not** include `tsx`, `mjml`, or `@react-email/components`. Do not set `NODE_ENV=development` on the baked image expecting raw `.tsx` to work — compile at image build time instead. Distroless is for the **final** image only; compilation uses a normal Node stage.
 
@@ -152,7 +175,7 @@ The Distroless runtime does **not** include `tsx`, `mjml`, or `@react-email/comp
 
 ### Global Config (`/config/config.yaml`)
 
-The global configuration file defines authentication, email accounts, and defaults.
+The global configuration file defines shared authentication plus channel-specific `email` and `sms` sections.
 
 #### Example Config
 
@@ -161,8 +184,8 @@ The global configuration file defines authentication, email accounts, and defaul
 ```yaml
 auth:
   type: apiKey
-  header: x-mailer-api-key
-  value: ${MAILER_API_KEY}
+  header: x-notifier-api-key
+  value: ${NOTIFIER_API_KEY}
 ```
 
 **HMAC Request Signing:**
@@ -170,13 +193,17 @@ auth:
 ```yaml
 auth:
   type: hmac
-  header: x-mailer-signature # Optional, defaults to 'x-mailer-signature'
-  secret: ${MAILER_SIGNING_SECRET}
+  header: x-notifier-signature # Optional, defaults to 'x-notifier-signature'
+  secret: ${NOTIFIER_SIGNING_SECRET}
   tolerance: 300 # Timestamp tolerance in seconds (default: 300 = 5 minutes)
 
 # Optional: Request validation settings
 requestValidation:
   maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
+  maxAttachmentSize: 10485760 # Per-attachment limit in bytes (default: 10MB)
+  allowedAttachmentMimeTypes: # Optional allowlist (defaults to common pdf/image/text types)
+    - application/pdf
+    - image/png
 ```
 
 **Full Example:**
@@ -184,30 +211,41 @@ requestValidation:
 ```yaml
 auth:
   type: hmac
-  header: x-mailer-signature
-  secret: ${MAILER_SIGNING_SECRET}
-  tolerance: 300 # 5 minutes in seconds
+  header: x-notifier-signature
+  secret: ${NOTIFIER_SIGNING_SECRET}
+  tolerance: 300
 
-accounts:
-  zeptomail:
-    type: zeptomail
-    from: ${MAIL_FROM_EMAIL}
-    apiKey: ${ZEPTOMAIL_API_KEY}
+email:
+  accounts:
+    zeptomail:
+      type: zeptomail
+      from: ${MAIL_FROM_EMAIL}
+      apiKey: ${ZEPTOMAIL_API_KEY}
+    ses:
+      type: ses
+      from: ${MAIL_FROM_EMAIL}
+      region: ${AWS_REGION}
+      accessKeyId: ${AWS_ACCESS_KEY_ID}
+      secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
+  defaults:
+    account: zeptomail
+    renderer: react-email
 
-  ses:
-    type: ses
-    from: ${MAIL_FROM_EMAIL}
-    region: ${AWS_REGION}
-    accessKeyId: ${AWS_ACCESS_KEY_ID}
-    secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
+sms:
+  accounts:
+    termii:
+      type: termii
+      apiKey: ${TERMII_API_KEY}
+      from: ${TERMII_FROM}
+      version: v3
+      channel: dnd
+      messageType: plain
+  defaults:
+    account: termii
 
-defaults:
-  account: zeptomail
-  renderer: react-email
-
-# Optional: Request validation settings
 requestValidation:
-  maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
+  maxBodySize: 1048576
+  maxAttachmentSize: 10485760
 ```
 
 #### Environment Variable Substitution
@@ -216,8 +254,8 @@ Use `${VAR_NAME}` or `${VAR_NAME:-default}` syntax in your YAML config files (bo
 
 ```yaml
 auth:
-  value: ${MAILER_API_KEY}  # Required, will error if not set
-  value: ${MAILER_API_KEY:-default-key}  # Optional, uses default if not set
+  value: ${NOTIFIER_API_KEY}  # Required, will error if not set
+  value: ${NOTIFIER_API_KEY:-default-key}  # Optional, uses default if not set
 ```
 
 **Important Notes:**
@@ -230,42 +268,60 @@ auth:
 
 ### Account Types
 
-Supported providers: **Zeptomail** and **Amazon SES**.
-
-#### Zeptomail
+#### Email: Zeptomail
 
 ```yaml
-accounts:
-  zeptomail:
-    type: zeptomail
-    from: noreply@example.com # Optional fallback 'from'
-    apiKey: ${ZEPTOMAIL_API_KEY}
-    bounceAddress: ${ZEPTOMAIL_BOUNCE_ADDRESS} # Optional
+email:
+  accounts:
+    zeptomail:
+      type: zeptomail
+      from: noreply@example.com
+      fromName: MyApp # Optional display name
+      apiKey: ${ZEPTOMAIL_API_KEY}
+      bounceAddress: ${ZEPTOMAIL_BOUNCE_ADDRESS} # Optional
 ```
 
-#### Amazon SES
+#### Email: Amazon SES
 
 ```yaml
-accounts:
-  ses:
-    type: ses
-    from: noreply@example.com # Optional fallback 'from'
-    region: us-east-1
-    accessKeyId: ${AWS_ACCESS_KEY_ID}
-    secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
+email:
+  accounts:
+    ses:
+      type: ses
+      from: noreply@example.com
+      region: us-east-1
+      accessKeyId: ${AWS_ACCESS_KEY_ID}
+      secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
 ```
+
+#### SMS: Termii
+
+```yaml
+sms:
+  accounts:
+    termii:
+      type: termii
+      apiKey: ${TERMII_API_KEY}
+      from: MyApp # sender ID
+      version: v3 # v3 | v4
+      # baseUrl: https://v3.api.termii.com
+      channel: dnd # dnd | generic
+      messageType: plain # plain | unicode
+```
+
+`version` selects `https://v3.api.termii.com` or `https://v4.api.termii.com`. Per-request `sendOptions.version` overrides the account default. If the account sets `baseUrl`, that URL is used and `sendOptions.version` is rejected (400).
 
 ## Templates
 
-**Source** (authoring): directories under your consumer `emails/` folder.
+**Source** (authoring): directories under your consumer `templates/` folder.
 **Runtime** (baked image): compiled artifacts under `/app/templates/` (default `TEMPLATES_DIR`).
 
-Each template directory contains:
+The loader recursively finds every `template.yaml` under the templates directory. Nested folders are supported. Each template `id` must be **unique** across the tree (directory name no longer has to match `id`). Path segments starting with `_` (e.g. `_components`) are skipped.
+
+Each template directory (the folder containing `template.yaml`) has:
 
 1. `template.yaml` - Template metadata and schema
 2. Template file — source: `index.tsx` / `index.mjml` / `index.html`; production: `index.mjs` and/or `index.html`
-
-**Note**: Folders starting with underscore (e.g., `_components`, `_utils`) are ignored by the template loader. This is useful for component-based renderers like React Email that may need shared components or utilities. These folders won't be treated as templates.
 
 ### Template Config (`template.yaml`)
 
@@ -288,9 +344,9 @@ schema:
 
 **Template Config Fields:**
 
-- `id` (required): Unique template identifier (must match directory name)
-- `renderer` (optional): Template renderer type (`react-email`, `mjml`, or `html`). Falls back to global default.
-- `account` (optional): Default account to use for this template. Falls back to global default.
+- `id` (required): Unique template identifier (across the whole templates tree)
+- `renderer` (optional): Template renderer type (`react-email`, `mjml`, or `html`). Falls back to `email.defaults.renderer`.
+- `account` (optional): Default email account for this template. Falls back to `email.defaults.account`.
 - `from` (optional): Default 'from' email address for this template. Falls back to `account.from` if not provided.
 - `schema` (required): JSON Schema for payload validation
 
@@ -342,7 +398,7 @@ export default function WelcomeEmail({
 }
 ```
 
-See [examples/mail-service](examples/mail-service) for the full author → preview → Docker compile workflow.
+See [examples/notifier-service](examples/notifier-service) for the full author → preview → Docker compile workflow.
 
 ### MJML Template (`index.mjml`)
 
@@ -373,11 +429,13 @@ Variables in MJML templates use `{{variableName}}` syntax.
 </html>
 ```
 
-Variables in HTML templates use `{{variableName}}` syntax.
+Variables in HTML templates use `{{variableName}}` syntax. Every variable referenced in the template must be present in the request `payload` with a string, number, or boolean value. Missing or unsupported variables return `400`.
+
+Template JSON Schemas reject unknown payload properties by default (unless `additionalProperties: true` is set explicitly).
 
 ## API Reference
 
-### POST /send
+### POST /email/send
 
 Send an email using a template.
 
@@ -386,13 +444,13 @@ Send an email using a template.
 **API Key Authentication:**
 
 ```
-x-mailer-api-key: <your-api-key>
+x-notifier-api-key: <your-api-key>
 ```
 
 **HMAC Request Signing:**
 
 ```
-x-mailer-signature: t=<timestamp>,v1=<signature>
+x-notifier-signature: t=<timestamp>,v1=<signature>
 ```
 
 The signature header format is `t=<timestamp>,v1=<signature>` where:
@@ -421,13 +479,13 @@ function generateSignature(secret, body) {
 
 const body = { templateId: 'welcome', payload: {...} };
 const bodyString = JSON.stringify(body);
-const signature = generateSignature(process.env.MAILER_SIGNING_SECRET, body);
+const signature = generateSignature(process.env.NOTIFIER_SIGNING_SECRET, body);
 
-fetch('https://mailer.example.com/send', {
+fetch('https://notifier.example.com/email/send', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'x-mailer-signature': signature,
+    'x-notifier-signature': signature,
   },
   body: JSON.stringify(body),
 });
@@ -438,66 +496,47 @@ fetch('https://mailer.example.com/send', {
 For testing with Postman, add this script to the "Pre-request Script" tab:
 
 ```javascript
-const secret = pm.environment.get('MAILER_SIGNING_SECRET');
+const secret = pm.environment.get('NOTIFIER_SIGNING_SECRET');
 if (!secret) {
-  throw new Error('MAILER_SIGNING_SECRET is required.');
+  throw new Error('NOTIFIER_SIGNING_SECRET is required.');
 }
 
-// Get the request body as a string
 const bodyString = pm.request.body.raw;
 if (!bodyString) {
-  console.error('Error: Request body is empty');
   throw new Error('Request body is required for HMAC signing');
 }
 
-// Generate Unix timestamp in seconds
 const timestamp = Math.floor(Date.now() / 1000);
 const message = `${timestamp}.${bodyString}`;
 
-// Convert secret and message to ArrayBuffer
 const encoder = new TextEncoder();
 const keyData = encoder.encode(secret);
 const messageData = encoder.encode(message);
 
-// Import key and sign (async operation)
-crypto.subtle
-  .importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: { name: 'SHA-512' } },
-    false,
-    ['sign'],
-  )
-  .then((key) => {
-    return crypto.subtle.sign('HMAC', key, messageData);
-  })
-  .then((signatureBuffer) => {
-    // Convert ArrayBuffer to hex string
-    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
-    const signature = signatureArray
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
+const key = await crypto.subtle.importKey(
+  'raw',
+  keyData,
+  { name: 'HMAC', hash: { name: 'SHA-512' } },
+  false,
+  ['sign'],
+);
 
-    // Set the signature header
-    const signatureHeader = `t=${timestamp},v1=${signature}`;
-    pm.request.headers.add({
-      key: 'x-mailer-signature',
-      value: signatureHeader,
-    });
+const signatureBuffer = await crypto.subtle.sign('HMAC', key, messageData);
+const signature = Array.from(new Uint8Array(signatureBuffer))
+  .map((b) => b.toString(16).padStart(2, '0'))
+  .join('');
 
-    console.log('HMAC signature generated and added to request');
-    console.log(`Timestamp: ${timestamp}`);
-    console.log(`Signature: ${signature.substring(0, 16)}...`);
-  })
-  .catch((err) => {
-    console.error('Error generating signature:', err);
-    throw new Error(`Failed to generate HMAC signature: ${err.message}`);
-  });
+pm.request.headers.upsert({
+  key: 'x-notifier-signature',
+  value: `t=${timestamp},v1=${signature}`,
+});
 ```
+
+Use top-level `await` so signing finishes before the request is sent (Postman v10+).
 
 **Setup:**
 
-1. Set an environment variable: `MAILER_SIGNING_SECRET = "your-secret-key"`
+1. Set an environment variable: `NOTIFIER_SIGNING_SECRET = "your-secret-key"`
 2. Paste the script into the "Pre-request Script" tab
 3. Make sure your request body is set to "raw" with "JSON" format
 
@@ -526,17 +565,20 @@ crypto.subtle
 **Request Fields:**
 
 - `templateId` (required): The template ID to use
-- `account` (optional): Account to use. Falls back to `template.account` or `config.defaults.account`
+- `account` (optional): Account to use. Falls back to `template.account` or `email.defaults.account`
 - `payload` (required): Data to pass to the template (must match template schema)
 - `sendMailOptions` (optional): Email sending options
   - `to` (required): Recipient email address(es) - string or array of strings
   - `from` (optional): Sender email address. Falls back to `template.from` > `account.from` if not provided
-  - `subject` (optional): Email subject
+  - `subject` (required unless set on the template): Email subject
   - `cc` (optional): CC recipient(s) - string or array of strings
   - `bcc` (optional): BCC recipient(s) - string or array of strings
   - `replyTo` (optional): Reply-to email address
   - `attachments` (optional): Array of attachment objects
-  - Provider-specific extras may be accepted depending on the account type
+  - `fromName` (Zeptomail only): display name for the sender
+  - `bounceAddress` (Zeptomail only): bounce address
+
+Unknown fields, and Zeptomail-only fields used with an SES account, are rejected with `400`.
 
 **Note**: The `to` field accepts either a single email string or an array of email addresses for multiple recipients.
 
@@ -553,18 +595,88 @@ crypto.subtle
 
 The system resolves configuration values in the following priority order:
 
-- **Account**: `request.account` > `template.account` > `config.defaults.account`
-- **Renderer**: `template.renderer` > `config.defaults.renderer`
-- **Email Options**: `request.sendMailOptions` > `template.from` > `account.from` (for `from` field only)
+- **Account**: `request.account` > `template.account` > `email.defaults.account`
+- **Renderer**: `template.renderer` > `email.defaults.renderer`
+- **From**: `request.sendMailOptions.from` > `template.from` > `account.from`
+- **Other sendMailOptions**: `request.sendMailOptions.*` > `template.*` > `account.*`
 
-**Email Options Merge:**
+### POST /sms/send
 
-1. The `from` field is resolved with the following priority: `request.sendMailOptions.from` (highest) > `template.from` > `account.from` (lowest)
-2. All other fields (`to`, `subject`, `cc`, `bcc`, `replyTo`, etc.) must be provided in `request.sendMailOptions` if needed
+Send an SMS via a configured SMS account (Termii). No templates.
+
+#### Headers
+
+Same authentication as email:
+
+**API Key:**
+
+```
+x-notifier-api-key: <your-api-key>
+```
+
+**HMAC Request Signing:**
+
+```
+x-notifier-signature: t=<timestamp>,v1=<signature>
+```
+
+See [POST /email/send](#post-emailsend) for signature generation examples.
+
+#### Request Body
+
+```json
+{
+  "to": "23490126727",
+  "body": "Your OTP is 1234",
+  "account": "termii",
+  "sendOptions": {
+    "version": "v4",
+    "from": "MyApp",
+    "channel": "dnd",
+    "messageType": "plain"
+  }
+}
+```
+
+**Request Fields:**
+
+- `to` (required): Destination phone number(s) in international format (string or array, max 100; 7–15 digits, optional leading `+`)
+- `body` (required): Message text
+- `account` (optional): SMS account id; falls back to `sms.defaults.account`
+- `sendOptions` (optional):
+  - `version` (`v3` | `v4`): Termii API host; overrides account `version` (rejected if account `baseUrl` is set)
+  - `from`: sender ID override (non-empty string)
+  - `channel`: `dnd` | `generic`
+  - `messageType`: `plain` | `unicode`
+
+Unknown fields inside `sendOptions` are rejected with `400`.
+
+`to` accepts a single phone string or an array of up to 100 numbers.
+
+#### Response
+
+```json
+{
+  "success": true,
+  "messageId": "<termii-message-id>"
+}
+```
 
 ### GET /health
 
-Health check endpoint.
+Health check endpoint (process is up).
+
+#### Response
+
+```json
+{
+  "status": "ok"
+}
+```
+
+### GET /ready
+
+Readiness check. Returns `503` when the email channel is configured but no templates are loaded.
 
 #### Response
 
@@ -587,7 +699,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Email validation failed: Invalid 'cc' addresses: invalid-email, another-invalid"
+  "success": false,
+  "message": "Email validation failed: Invalid 'cc' addresses: invalid-email, another-invalid"
 }
 ```
 
@@ -597,27 +710,38 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Error message",
-  "details": ["Additional error details"] // Optional, for validation errors
+  "success": false,
+  "message": "Error message",
+  "details": ["Additional error details"]
 }
 ```
+
+`details` is optional (for example payload validation failures).
 
 ### HTTP Status Codes
 
 - `400` - Bad Request
-  - Missing required fields (`templateId`, `payload`, `to`)
-  - Payload validation failed (doesn't match template schema)
+  - Missing required fields (`templateId`, `payload`, `to`, `body`, etc.)
+  - Invalid field types (for example non-string `body` on SMS)
+  - Unknown fields in `sendOptions` or `sendMailOptions`
+  - Payload validation failed (doesn't match template schema, including unknown properties)
+  - Template variable missing from payload or unsupported variable type
   - Email validation failed (invalid email addresses)
+  - Invalid attachment content or metadata
   - No account specified and no default account configured
+  - Unknown email/SMS account id
 - `401` - Unauthorized
-  - Invalid or missing API key
+  - Invalid or missing API key or HMAC signature
 - `404` - Not Found
   - Template not found
-  - Account not found
+- `413` - Payload Too Large
+  - Request body exceeds `requestValidation.maxBodySize`
+- `502` - Bad Gateway
+  - Email or SMS provider failure
+- `503` - Service Unavailable
+  - Email or SMS channel not configured
 - `500` - Internal Server Error
-  - Template rendering errors
-  - Provider / transport errors
-  - Other server errors
+  - Other unexpected server errors
 
 ### Common Error Scenarios
 
@@ -625,7 +749,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Missing required field: templateId"
+  "success": false,
+  "message": "Missing required field: templateId"
 }
 ```
 
@@ -633,7 +758,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Template not found: welcome"
+  "success": false,
+  "message": "Template not found: welcome"
 }
 ```
 
@@ -641,7 +767,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Payload validation failed",
+  "success": false,
+  "message": "Payload validation failed",
   "details": ["userName: Required", "appName: Required"]
 }
 ```
@@ -650,7 +777,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Email validation failed: Invalid 'to' addresses: invalid-email"
+  "success": false,
+  "message": "Email validation failed: Invalid 'to' addresses: invalid-email"
 }
 ```
 
@@ -658,7 +786,8 @@ All email addresses are automatically validated before sending:
 
 ```json
 {
-  "error": "Missing required field: 'from' in sendMailOptions. Provide it in request.sendMailOptions, template.from, or account.from (for 'from' field only)"
+  "success": false,
+  "message": "Missing required field: from"
 }
 ```
 
@@ -682,6 +811,7 @@ HMAC authentication provides:
 ### Request Validation
 
 - Body size limit: 1MB default (configurable via `requestValidation.maxBodySize`)
+- Attachment size and MIME allowlist (configurable via `requestValidation.maxAttachmentSize` and `allowedAttachmentMimeTypes`)
 - Content-Type validation: Requires `application/json` for POST requests
 
 **Configuration:**
@@ -689,6 +819,11 @@ HMAC authentication provides:
 ```yaml
 requestValidation:
   maxBodySize: 1048576 # Maximum request body size in bytes (default: 1048576 = 1MB)
+  maxAttachmentSize: 10485760 # Per attachment (default: 10MB)
+  maxAttachments: 10 # Max attachments per email (default: 10)
+  allowedAttachmentMimeTypes:
+    - application/pdf
+    - image/png
 ```
 
 The `maxBodySize` is specified in bytes. Common values:
@@ -702,34 +837,17 @@ The `maxBodySize` is specified in bytes. Common values:
 All requests are logged with:
 
 - Timestamp
-- IP address (when available - see IP Detection below)
 - Endpoint and method
 - Status code
 - Response time
 - Request size
-
-**IP Address Detection:**
-
-IP addresses are detected in the following scenarios:
-
-- **Production with reverse proxy** (nginx, load balancer, etc.): IP from `x-forwarded-for` header ✅
-- **Behind Cloudflare**: IP from `cf-connecting-ip` header ✅
-- **Direct connection** (no proxy): Attempts to get IP from connection (may work) ⚠️
-- **Localhost/testing** (Postman, curl from localhost): Returns `null` (no IP available) ❌
-
-**Important for Production:**
-
-- If using a reverse proxy, ensure it sets the `x-forwarded-for` header
-- Most production setups (nginx, AWS ALB, etc.) set this header automatically
-- Without a reverse proxy or proper headers, IP detection will fail
+- Template ID / account ID (when present on send requests)
 
 Special logging for:
 
 - Failed authentication attempts
-- Large requests (>100KB)
-- Slow requests:
-  - `/send` endpoint: >10 seconds (sending via external providers typically takes 1-5 seconds)
-  - Other endpoints: >1 second
+- Large requests (>512KB, based on Content-Length)
+- Slow requests (>5 seconds)
 
 **PII Handling:** Email addresses and payload content are not logged - only metadata (template ID, account ID, etc.) is recorded.
 
@@ -738,43 +856,25 @@ Special logging for:
 ### Project Structure
 
 ```
-apps/mailer/
+apps/notifier/
   src/
     controllers/          # Route handlers
-      email.controller.ts
-    index.ts              # Main app entry point (route definitions)
-    middleware/           # Middleware
-      auth.ts
-    services/             # Business logic services
-      mailer/             # Email sending service
-        send.ts
-        transport.ts
-      renderer/           # Template renderers
-        html.ts
-        index.ts
-        mjml.ts
-        react-email.ts
-    types/                # TypeScript type definitions
-      config.ts
-      request.ts
-      template.ts
-    utils/                # Utility functions
-      loaders/            # Configuration and template loaders
-        config.loader.ts
-        template.loader.ts
-        yaml.loader.ts
-      schema/             # Schema utilities
-        json-schema-to-zod.ts
-      template/            # Template utilities
-        template-path.ts
-      validation/          # Validation utilities
-        email.ts
-        payload.ts
-  data/
-    config/
-      config.yaml
-    templates/
-      welcome-*/          # Template directories
+    index.ts              # Main app entry point
+    middleware/           # auth, audit, request validation
+    services/
+      email/              # SES + ZeptoMail
+      sms/                # Termii
+      renderer/           # html, mjml, react-email
+    types/
+    utils/
+      loaders/
+      schema/
+      validation/
+
+examples/notifier-service/  # Canonical consumer image (config + templates)
+  templates/
+  config/
+  Dockerfile
 ```
 
 ### Adding a New Renderer
@@ -790,49 +890,43 @@ apps/mailer/
 - `CONFIG_PATH` - Path to config file (default: `/config/config.yaml`)
 - `TEMPLATES_DIR` - Path to templates directory (default: `/app/templates`)
 
-**Note**: Baked consumer images use the defaults (`/config/config.yaml` and `/app/templates`). Override these only for local API development (e.g. point `TEMPLATES_DIR` at your `emails/` folder). Do not volume-mount templates into the Distroless runtime — bake a new image when templates change.
+**Note**: Baked consumer images use the defaults (`/config/config.yaml` and `/app/templates`). Override these only for local API development (e.g. point `TEMPLATES_DIR` at your `templates/` folder). Do not volume-mount templates into the Distroless runtime — bake a new image when templates change.
 
 **All other environment variables** are user-defined based on what you reference in your `config.yaml` using the `${VAR_NAME}` syntax. For example, if your config uses `${MY_CUSTOM_API_KEY}`, then you would set the `MY_CUSTOM_API_KEY` environment variable.
 
 **Common examples** (these names are just examples - use whatever names you prefer):
 
-- `${MAILER_API_KEY}` / `${MAILER_SIGNING_SECRET}` - Auth credentials
+- `${NOTIFIER_API_KEY}` / `${NOTIFIER_SIGNING_SECRET}` - Auth credentials
 - `${MAIL_FROM_EMAIL}` - Default sender address
 - `${ZEPTOMAIL_API_KEY}` - Zeptomail API key
 - `${AWS_REGION}` / `${AWS_ACCESS_KEY_ID}` / `${AWS_SECRET_ACCESS_KEY}` - SES credentials
 - `PORT` - Server port (default: 3000) — used by the process, not via config.yaml substitution
 
-### Running Tests
-
-```bash
-bun test
-```
-
 ### Linting
 
 ```bash
-bun run lint
+npm run lint
 ```
 
 ## Docker
 
-### Building the slim mailer runtime
+### Building the slim notifier runtime
 
 ```bash
-docker build -t blockqueue/mailer:latest -f docker/mailer/Dockerfile.prod .
+docker build -t blockqueue/notifier:latest -f docker/notifier/Dockerfile.prod .
 ```
 
-The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.mjs`, and only the peers pinned in [`docker/mailer/package.runtime.json`](docker/mailer/package.runtime.json) (`react` / `react-dom` / `@react-email/render`). Runtime deps are installed on Debian (glibc) before copying into Distroless. It does **not** include `tsx`, `mjml`, or `@react-email/components`.
+The runtime image is based on **Google Distroless** (`gcr.io/distroless/nodejs24-debian12:nonroot`) — no shell, npm, or yarn. It includes the Hono API bundle (`dist/index.cjs`), `compile-templates.mjs`, and only the peers pinned in [`docker/notifier/package.runtime.json`](docker/notifier/package.runtime.json) (`react` / `react-dom` / `@react-email/render`). Runtime deps are installed on Debian (glibc) before copying into Distroless. It does **not** include `tsx`, `mjml`, or `@react-email/components`.
 
 (Chainguard’s public `node` image was evaluated; Distroless was smaller.)
 
 ### Shipping templates
 
-Bake compiled templates into a consumer image — see [examples/mail-service](examples/mail-service):
+Bake compiled templates into a consumer image — see [examples/notifier-service](examples/notifier-service):
 
 ```bash
-docker compose build bq-mailer-build
-docker compose up bq-example-mail-service
+docker compose build bq-notifier-build
+docker compose up bq-example-notifier-service
 ```
 
 Template changes require a new image build. Volume mounts are not supported for Distroless.

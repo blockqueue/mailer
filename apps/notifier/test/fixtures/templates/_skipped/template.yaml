@@ -1,0 +1,4 @@
+id: ignored
+renderer: html
+schema:
+  type: object
